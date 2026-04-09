@@ -39,6 +39,12 @@ const COSTA_RICA_PROVINCES = [
   'San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'
 ];
 
+const INDUSTRY_CATEGORIES = [
+  'Restaurantes', 'Bufetes de Abogados', 'Ferreterías', 'Talleres Mecánicos',
+  'Clínicas Médicas', 'Salones de Belleza', 'Bienes Raíces', 'Hoteles',
+  'Servicios de Transporte', 'Software & Tech', 'Importaciones', 'Salud'
+];
+
 const SUGGESTED_PLATFORMS = [
   { name: 'Google Maps', url: 'https://www.google.com/maps', icon: Globe },
   { name: 'Mercado Libre', url: 'https://www.mercadolibre.com.cr', icon: Building2 },
@@ -56,7 +62,6 @@ const PROFESSIONAL_COLLEGES = [
 function App() {
   const [activeMode, setActiveMode] = useState<'search' | 'direct'>('search');
   const [query, setQuery] = useState('');
-  const [location, setLocation] = useState('');
   const [province, setProvince] = useState('San José');
   const [targetUrl, setTargetUrl] = useState('');
   const [showLegalWarning, setShowLegalWarning] = useState(false);
@@ -330,40 +335,38 @@ function App() {
 
               <div className="space-y-4">
                 {activeMode === 'search' ? (
-                  <>
-                    <div>
-                      <label className="block text-sm font-semibold text-surface-700 mb-2">Categoría / Industria</label>
-                      <input
-                        type="text"
-                        placeholder="Eje: Bienes Raíces, Repuestos..."
-                        className="w-full px-5 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                      />
-                    </div>
-
+                  <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-semibold text-surface-700 mb-2">Provincia</label>
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-bold text-surface-700 flex items-center gap-2">
+                          <Search className="w-3.5 h-3.5 text-primary-600" /> Categoría
+                        </label>
                         <select
-                          className="w-full px-4 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all text-sm appearance-none cursor-pointer"
+                          className="w-full px-3 py-2.5 rounded-xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all text-sm"
+                          value={query}
+                          onChange={(e) => setQuery(e.target.value)}
+                          title="Categoría"
+                        >
+                          <option value="">Seleccionar...</option>
+                          {INDUSTRY_CATEGORIES.map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-bold text-surface-700 flex items-center gap-2">
+                          <Building2 className="w-3.5 h-3.5 text-primary-600" /> Provincia
+                        </label>
+                        <select
+                          className="w-full px-3 py-2.5 rounded-xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all text-sm"
                           value={province}
                           onChange={(e) => setProvince(e.target.value)}
+                          title="Provincia"
                         >
                           {COSTA_RICA_PROVINCES.map(p => (
                             <option key={p} value={p}>{p}</option>
                           ))}
                         </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-surface-700 mb-2">Ubicación</label>
-                        <input
-                          type="text"
-                          placeholder="+ Km"
-                          className="w-full px-4 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all text-sm"
-                          value={location}
-                          onChange={(e) => setLocation(e.target.value)}
-                        />
                       </div>
                     </div>
 
@@ -385,7 +388,7 @@ function App() {
                         ))}
                       </div>
                     </div>
-                  </>
+                  </div>
                 ) : (
                   <div>
                     <label className="block text-sm font-semibold text-surface-700 mb-1.5">Plataformas Sugeridas</label>
@@ -417,17 +420,17 @@ function App() {
                 <div className="py-4 space-y-4 border-t border-surface-100 mt-4">
                   <div>
                     <label className="block text-xs font-bold text-surface-400 uppercase tracking-widest mb-3">Fuente de Datos (Capas)</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {['maps', 'meta', 'directorios'].map(layer => (
+                    <div className="grid grid-cols-4 gap-2">
+                      {['maps', 'meta', 'directorios', 'guia'].map(layer => (
                         <button
                           key={layer}
                           onClick={() => setFilters({ ...filters, sourceLayer: layer })}
                           className={`px-2 py-2 rounded-xl text-[10px] font-bold border transition-all ${filters.sourceLayer === layer
-                              ? 'bg-primary-50 border-primary-200 text-primary-700 shadow-sm'
-                              : 'bg-surface-50 border-surface-200 text-surface-500 hover:bg-white'
+                            ? 'bg-primary-50 border-primary-200 text-primary-700 shadow-sm'
+                            : 'bg-surface-50 border-surface-200 text-surface-500 hover:bg-white'
                             }`}
                         >
-                          {layer === 'maps' ? 'G. Maps' : layer === 'meta' ? 'Meta Ads' : 'Colegios'}
+                          {layer === 'maps' ? 'G. Maps' : layer === 'meta' ? 'Meta Ads' : layer === 'directorios' ? 'Colegios' : 'Guía Tel.'}
                         </button>
                       ))}
                     </div>
@@ -714,7 +717,7 @@ function App() {
           SISTEMA PROFESIONAL JAZM.IO <ChevronRight className="w-3 h-3" /> N8N AGENTIC ENGINE
         </p>
       </footer>
-    </div>
+    </div >
   );
 }
 
