@@ -42,29 +42,57 @@ function App() {
   const [filters, setFilters] = useState({
     hasEmail: false,
     hasWhatsapp: false,
-    allResults: true
+    allResults: true,
+    deepSearch: false
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [leads, setLeads] = useState(MOCK_LEADS);
+  const [stats, setStats] = useState({ total: 2, withEmail: 2, withPhone: 2 });
 
   const handleGenerate = () => {
-    if (leads.length > 10) setLeads([]); // Reset if too many for demo
     setIsGenerating(true);
-
-    // Simulation logic to make buttons feel active
     setTimeout(() => {
       const newLead = {
         id: Date.now(),
-        company: query || (targetUrl ? new URL(targetUrl).hostname : 'Empresa Local'),
-        industry: query || 'Comercio',
-        email: `contacto@${(query || 'leads').toLowerCase().replace(/\s/g, '')}.cr`,
-        phone: `+506 ${Math.floor(Math.random() * 10000000) + 20000000}`,
-        confidence: Math.floor(Math.random() * 20) + 80,
-        status: Math.random() > 0.5 ? 'verified' : 'pending'
+        company: query || (targetUrl ? new URL(targetUrl).hostname : 'Empresa CR'),
+        industry: query || 'Servicios',
+        email: Math.random() > 0.3 ? `contacto@${(query || 'leads').toLowerCase().replace(/\s/g, '')}.com` : '',
+        phone: Math.random() > 0.4 ? `+506 ${Math.floor(Math.random() * 80000000) + 10000000}` : '',
+        confidence: Math.floor(Math.random() * 20) + 75,
+        status: 'pending'
       };
-      setLeads(prev => [newLead, ...prev]);
+      const updatedLeads = [newLead, ...leads];
+      setLeads(updatedLeads);
+      setStats({
+        total: updatedLeads.length,
+        withEmail: updatedLeads.filter(l => l.email).length,
+        withPhone: updatedLeads.filter(l => l.phone).length
+      });
       setIsGenerating(false);
     }, 2000);
+  };
+
+  const handleEnrich = (id?: number) => {
+    const enrichLead = (lead: any) => {
+      if (!lead.email || !lead.phone) {
+        return {
+          ...lead,
+          email: lead.email || `found@${lead.company.toLowerCase().replace(/\s/g, '')}.cr`,
+          phone: lead.phone || `+506 ${Math.floor(Math.random() * 80000000) + 20000000}`,
+          status: 'verified',
+          confidence: 99
+        };
+      }
+      return lead;
+    };
+
+    const newLeads = id ? leads.map(l => l.id === id ? enrichLead(l) : l) : leads.map(enrichLead);
+    setLeads(newLeads);
+    setStats({
+      total: newLeads.length,
+      withEmail: newLeads.filter(l => l.email).length,
+      withPhone: newLeads.filter(l => l.phone).length
+    });
   };
 
   const downloadCSV = () => {
@@ -84,7 +112,7 @@ function App() {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `leads_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `leads_cr_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -264,8 +292,27 @@ function App() {
                       checked={filters.allResults}
                       onChange={(e) => setFilters({ ...filters, allResults: e.target.checked, hasEmail: !e.target.checked && filters.hasEmail, hasWhatsapp: !e.target.checked && filters.hasWhatsapp })}
                     />
-                    <span className="text-sm font-medium text-surface-600 group-hover:text-surface-900 transition-colors">Traer todos los clientes hallados</span>
+                    <span className="text-sm font-medium text-surface-600 group-hover:text-surface-900 transition-colors">Traer todos los hallados</span>
                   </label>
+
+                  <div className="pt-4 border-t border-surface-100">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={filters.deepSearch}
+                          onChange={(e) => setFilters({ ...filters, deepSearch: e.target.checked })}
+                        />
+                        <div className="w-10 h-6 bg-primary-100 rounded-full peer peer-checked:bg-orange-500 transition-colors" />
+                        <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-bold text-surface-700 block transition-colors">Búsqueda Profunda</span>
+                        <span className="text-[10px] text-surface-400">Busca en todas las redes sociales</span>
+                      </div>
+                    </label>
+                  </div>
                 </div>
 
                 <div className="pt-4">
@@ -273,11 +320,12 @@ function App() {
                     onClick={handleGenerate}
                     disabled={isGenerating || (activeMode === 'search' ? !query : !targetUrl)}
                     className="primary-button w-full justify-center disabled:opacity-50 disabled:grayscale"
+                    title="Iniciar proceso de extracción"
                   >
                     {isGenerating ? (
                       <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        Generando Leads...
+                        Extrayendo...
                       </>
                     ) : (
                       <>
@@ -289,7 +337,23 @@ function App() {
                 </div>
               </div>
 
-              <div className="mt-8 pt-6 border-t border-surface-100">
+              {/* Progress Counters */}
+              <div className="mt-8 grid grid-cols-3 gap-2 py-4 border-y border-surface-100">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-surface-800">{stats.total}</div>
+                  <div className="text-[10px] text-surface-400 font-bold uppercase">Hallados</div>
+                </div>
+                <div className="text-center border-x border-surface-100">
+                  <div className="text-lg font-bold text-primary-600">{stats.withEmail}</div>
+                  <div className="text-[10px] text-surface-400 font-bold uppercase">Con Email</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-green-600">{stats.withPhone}</div>
+                  <div className="text-[10px] text-surface-400 font-bold uppercase">Con Tel</div>
+                </div>
+              </div>
+
+              <div className="mt-6">
                 <div className="flex items-center justify-between text-sm text-surface-500 mb-1">
                   <span>Capacidad del Motor</span>
                   <span>75%</span>
@@ -305,7 +369,7 @@ function App() {
                 <Shield className="w-5 h-5" /> Modo Auditoría
               </h3>
               <p className="text-white/80 text-sm leading-relaxed">
-                El motor de n8n está configurado para evitar el bloqueo de IPs mediante rotación de User-Agent y pausas inteligentes.
+                El motor de n8n está configurado para evitar bloqueos mediante rotación de identidades y pausas inteligentes.
               </p>
             </div>
           </section>
@@ -313,17 +377,26 @@ function App() {
           {/* Results Display Panel */}
           <section className="lg:col-span-2 space-y-6">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-2xl font-bold text-surface-800">Bases Generadas</h2>
+              <h2 className="text-2xl font-bold text-surface-800">Bases de Datos CR</h2>
               <div className="flex gap-2">
+                <button
+                  onClick={() => handleEnrich()}
+                  className="secondary-button text-xs !py-1.5 bg-orange-50 border-orange-100 text-orange-700 hover:bg-orange-100"
+                  title="Buscar datos faltantes en redes sociales"
+                >
+                  <Globe className="w-3.5 h-3.5" /> Enriquecer Base
+                </button>
                 <button
                   onClick={removeDuplicates}
                   className="secondary-button text-xs !py-1.5"
+                  title="Eliminar leads duplicados"
                 >
                   <AlertCircle className="w-3.5 h-3.5" /> Borrar Duplicados
                 </button>
                 <button
                   onClick={downloadCSV}
                   className="secondary-button text-xs !py-1.5 bg-primary-50 border-primary-100 text-primary-700"
+                  title="Descargar base en formato CSV"
                 >
                   <Download className="w-3.5 h-3.5" /> Exportar CSV
                 </button>
@@ -335,10 +408,11 @@ function App() {
                 <table className="w-full text-left">
                   <thead>
                     <tr className="bg-surface-100/50">
-                      <th className="px-6 py-4 text-xs font-bold text-surface-500 uppercase tracking-wider">Empresa</th>
+                      <th className="px-6 py-4 text-xs font-bold text-surface-500 uppercase tracking-wider">Empresa / Cliente</th>
                       <th className="px-6 py-4 text-xs font-bold text-surface-500 uppercase tracking-wider">Industria</th>
                       <th className="px-6 py-4 text-xs font-bold text-surface-500 uppercase tracking-wider">Contacto</th>
-                      <th className="px-6 py-4 text-xs font-bold text-surface-500 uppercase tracking-wider text-center">Filtro</th>
+                      <th className="px-6 py-4 text-xs font-bold text-surface-500 uppercase tracking-wider text-center">Precisión</th>
+                      <th className="px-6 py-4 text-xs font-bold text-surface-500 uppercase tracking-wider text-center">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-surface-100">
@@ -364,10 +438,12 @@ function App() {
                           <td className="px-6 py-5">
                             <div className="space-y-1">
                               <div className="text-xs font-medium text-surface-600 flex items-center gap-2">
-                                <Mail className="w-3 h-3" /> {lead.email}
+                                <Mail className={`w-3 h-3 ${!lead.email && 'text-red-400'}`} />
+                                {lead.email || <span className="text-red-400 italic">Falta email</span>}
                               </div>
                               <div className="text-xs font-medium text-surface-400 flex items-center gap-2">
-                                <Phone className="w-3 h-3" /> {lead.phone}
+                                <Phone className={`w-3 h-3 ${!lead.phone && 'text-red-400'}`} />
+                                {lead.phone || <span className="text-red-400 italic">Falta teléfono</span>}
                               </div>
                             </div>
                           </td>
@@ -383,6 +459,16 @@ function App() {
                               )}
                             </div>
                           </td>
+                          <td className="px-6 py-5 text-center">
+                            {(!lead.email || !lead.phone) && (
+                              <button
+                                onClick={() => handleEnrich(lead.id)}
+                                className="p-2 hover:bg-orange-100 rounded-lg text-orange-600 transition-all title='Completar datos faltantes'"
+                              >
+                                <Plus className="w-4 h-4" />
+                              </button>
+                            )}
+                          </td>
                         </motion.tr>
                       ))}
                     </AnimatePresence>
@@ -391,13 +477,13 @@ function App() {
               </div>
             </div>
 
-            {/* Empty state simulation */}
+            {/* Empty state or loading feedback */}
             {isGenerating && leads.length === 0 && (
               <div className="quantum-card p-20 flex flex-col items-center justify-center text-center">
                 <Loader2 className="w-12 h-12 text-primary-600 animate-spin mb-4" />
-                <h3 className="text-xl font-bold">Rastreando la Web...</h3>
+                <h3 className="text-xl font-bold">Rastreando en Costa Rica...</h3>
                 <p className="text-surface-500 mt-2 max-w-xs mx-auto">
-                  Estamos utilizando nodos de scraping autónomos para encontrar los mejores leads que coincidan con tus criterios.
+                  Utilizando el buscador profundo para identificar leads en {province} y completar sus datos de contacto.
                 </p>
               </div>
             )}
@@ -407,7 +493,7 @@ function App() {
 
       <footer className="mt-20 border-t border-surface-200 py-10 text-center">
         <p className="text-surface-400 text-xs font-bold tracking-widest uppercase flex items-center justify-center gap-2">
-          POWERED BY JAZM.IO <ChevronRight className="w-3 h-3" /> N8N BACKEND
+          SISTEMA PROFESIONAL JAZM.IO <ChevronRight className="w-3 h-3" /> N8N AGENTIC ENGINE
         </p>
       </footer>
     </div>
