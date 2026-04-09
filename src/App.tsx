@@ -183,8 +183,7 @@ function App() {
           options.headers = { 'Content-Type': 'text/plain' };
         } else if (mode === 'proxy') {
           addLog(`[PROXY] Usando Túnel de Emergencia (AllOrigins)...`);
-          url = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}&callback=?`; // Callback trick for CORS
-          // AllOrigins proxy handles the request
+          url = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
         }
 
         const response = await fetch(url, options);
@@ -192,25 +191,23 @@ function App() {
 
         let data;
         if (mode === 'proxy') {
-          const proxyResult = await response.text();
-          // Extract JSON from callback or raw
-          const jsonStr = proxyResult.substring(proxyResult.indexOf('({') + 1, proxyResult.lastIndexOf('})') + 1);
-          const proxyData = JSON.parse(jsonStr);
-          data = JSON.parse(proxyData.contents);
+          const proxyResult = await response.json();
+          // AllOrigins returns the stringified content in .contents
+          data = typeof proxyResult.contents === 'string' ? JSON.parse(proxyResult.contents) : proxyResult.contents;
         } else {
           data = await response.json();
         }
 
-        if (data.leads && data.leads.length > 0) {
+        if (data && data.leads) {
           setLeads(data.leads);
           setStats({
             total: data.leads.length,
             withEmail: data.leads.filter((l: Lead) => l.email).length,
             withPhone: data.leads.filter((l: Lead) => l.phone).length
           });
-          addLog(`[ÉXITO] ${data.leads.length} leads recibidos vía ${mode.toUpperCase()}.`);
+          addLog(`[ÉXITO] registros recibidos vía ${mode.toUpperCase()}.`);
         } else {
-          addLog(`[INFO] Conectado vía ${mode}, pero n8n no retornó leads.`);
+          addLog(`[INFO] Conectado vía ${mode}, pero el formato de datos es diferente.`);
         }
       };
 
@@ -218,13 +215,15 @@ function App() {
         await performN8NRequest('standard');
       } catch (e1) {
         try {
+          await new Promise(r => setTimeout(r, 500));
           await performN8NRequest('simple');
         } catch (e2) {
           try {
+            await new Promise(r => setTimeout(r, 1000));
             await performN8NRequest('proxy');
           } catch (e3) {
             addLog(`[FALLO TOTAL] n8n sigue inaccesible.`);
-            addLog(`> SOLUCIÓN FINAL: Revisa que tu servidor n8n sea ACCESIBLE desde internet.`);
+            addLog(`> SOLUCIÓN FINAL: Revisa que tu servidor n8n sea ACCESIBLE.`);
           }
         }
       }
