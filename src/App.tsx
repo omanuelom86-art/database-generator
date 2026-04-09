@@ -13,12 +13,21 @@ import {
   CheckCircle2,
   AlertCircle,
   RotateCcw,
-  Square,
+  MapPin,
+  Lock,
+  Unlock,
+  UserCheck,
+  ShieldCheck,
+  Users,
+  LogOut,
+  UserPlus,
+  Plus,
   FileJson,
   ClipboardCheck,
-  MapPin
+  Square
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect } from 'react';
 
 interface Lead {
   id: number;
@@ -60,6 +69,21 @@ const PROFESSIONAL_COLLEGES = [
 ];
 
 function App() {
+  const [view, setView] = useState<'auth' | 'app' | 'admin' | 'pending'>('auth');
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    document.title = "Nexus AI | Generador de Leads CR";
+    const link = document.querySelector("link[rel*='icon']") as HTMLLinkElement || document.createElement('link');
+    link.type = 'image/svg+xml';
+    link.rel = 'icon';
+    link.href = '/favicon.svg';
+    document.getElementsByTagName('head')[0].appendChild(link);
+  }, []);
+  const [pendingUsers, setPendingUsers] = useState<any[]>([
+    { id: 1, name: 'Jose Figueres', email: 'pepe@cr.com', status: 'pending', date: 'hoy' },
+    { id: 2, name: 'Laura Chinchilla', email: 'laura@cr.com', status: 'pending', date: 'ayer' }
+  ]);
   const [activeMode, setActiveMode] = useState<'search' | 'direct' | 'domain' | 'asalariado'>('search');
   const [query, setQuery] = useState('');
   const [targetUrl, setTargetUrl] = useState('');
@@ -275,6 +299,135 @@ function App() {
     setLeads(uniqueLeads);
   };
 
+  if (view === 'auth') {
+    return (
+      <div className="min-h-screen quantum-bg flex items-center justify-center p-6">
+        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="quantum-card max-w-md w-full p-10 space-y-8 bg-white/80 backdrop-blur-2xl">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-primary-600 rounded-2xl mx-auto flex items-center justify-center shadow-xl shadow-primary-500/30 mb-6">
+              <Database className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-3xl font-black text-surface-900 tracking-tight">Nexus AI <span className="text-primary-600">Pro</span></h1>
+            <p className="text-surface-500 mt-2 font-medium">Inicia sesión o regístrate para solicitar acceso corporativo.</p>
+          </div>
+          <div className="space-y-4">
+            <button
+              onClick={() => {
+                setCurrentUser({ name: 'Admin User', role: 'superadmin', isApproved: true });
+                setView('app');
+              }}
+              className="w-full py-4 bg-primary-600 text-white rounded-2xl font-bold shadow-lg shadow-primary-500/30 hover:bg-primary-700 transition-all flex items-center justify-center gap-3"
+            >
+              <ShieldCheck className="w-5 h-5" /> Entrar como SUPER ADMIN
+            </button>
+            <button
+              onClick={() => setView('pending')}
+              className="w-full py-4 bg-surface-100 text-surface-700 rounded-2xl font-bold hover:bg-surface-200 transition-all flex items-center justify-center gap-3"
+            >
+              <UserPlus className="w-5 h-5" /> Solicitar Nuevo Acceso
+            </button>
+          </div>
+          <div className="pt-4 text-center border-t border-surface-100">
+            <p className="text-[10px] text-surface-400 font-bold uppercase tracking-widest leading-relaxed">
+              PLATAFORMA RESTRINGIDA: Los accesos deben ser aprobados manualmente por el Super Administrador de Jazm.io
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (view === 'pending') {
+    return (
+      <div className="min-h-screen quantum-bg flex items-center justify-center p-6">
+        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="quantum-card max-w-lg w-full p-10 text-center space-y-6">
+          <div className="w-20 h-20 bg-amber-100 rounded-full mx-auto flex items-center justify-center shadow-inner group">
+            <Lock className="w-10 h-10 text-amber-600 group-hover:hidden" />
+            <Unlock className="w-10 h-10 text-amber-600 hidden group-hover:block" />
+          </div>
+          <h2 className="text-2xl font-bold text-surface-800">Solicitud Recibida</h2>
+          <p className="text-surface-500 leading-relaxed font-medium">
+            ¡Hola! Tu perfil está en manos del **Super Administrador**. <br />
+            Recibirás un mensaje de aprobación inmediata en tu WhatsApp una vez que validemos tu licencia de Nexus AI.
+          </p>
+          <div className="pt-6">
+            <button onClick={() => setView('auth')} className="text-primary-600 font-bold hover:underline flex items-center gap-2 mx-auto">
+              <LogOut className="w-4 h-4" /> Volver al Inicio
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (view === 'admin') {
+    return (
+      <div className="min-h-screen bg-surface-50 flex">
+        <aside className="w-72 bg-white border-r border-surface-200 p-8 flex flex-col h-full sticky top-0 shadow-sm">
+          <div className="flex items-center gap-3 mb-12">
+            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
+              <ShieldCheck className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-black text-xl tracking-tighter">ADMIN PANEL</span>
+          </div>
+          <nav className="flex-1 space-y-4">
+            <button onClick={() => setView('app')} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-surface-50 text-surface-600 font-bold text-sm transition-all">
+              <Database className="w-4 h-4" /> Volver Motor CR
+            </button>
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-primary-50 text-primary-600 font-bold text-sm transition-all">
+              <Users className="w-4 h-4" /> Gestionar Usuarios
+            </div>
+          </nav>
+          <button onClick={() => setView('auth')} className="flex items-center gap-3 p-3 rounded-xl text-red-600 font-bold text-sm hover:bg-red-50 transition-all">
+            <LogOut className="w-4 h-4" /> Desconectarse
+          </button>
+        </aside>
+        <main className="flex-1 p-12 overflow-y-auto">
+          <header className="mb-10 flex justify-between items-end">
+            <div>
+              <h1 className="text-3xl font-black text-surface-900 tracking-tight">Validación <span className="text-primary-600">Nexus</span></h1>
+              <p className="text-surface-500 mt-2">Acepta o rechaza las solicitudes de nuevos agentes.</p>
+            </div>
+            <div className="bg-amber-100 text-amber-700 font-black text-[10px] uppercase tracking-widest px-4 py-2 rounded-full border border-amber-200">
+              {pendingUsers.length} Pendientes
+            </div>
+          </header>
+          <div className="quantum-card p-0 overflow-hidden shadow-xl ring-1 ring-surface-200 border-none">
+            <table className="w-full">
+              <thead className="bg-surface-50 border-b border-surface-100 uppercase tracking-widest text-[10px] font-black text-surface-400">
+                <tr>
+                  <th className="px-8 py-4 text-left">Solicitante</th>
+                  <th className="px-8 py-4 text-left">Email / Canal</th>
+                  <th className="px-8 py-4 text-left">Status</th>
+                  <th className="px-8 py-4 text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-100">
+                {pendingUsers.map(u => (
+                  <tr key={u.id} className="hover:bg-primary-50/30 transition-all">
+                    <td className="px-8 py-6 font-bold text-surface-800">{u.name}</td>
+                    <td className="px-8 py-6 text-surface-500 font-medium">{u.email}</td>
+                    <td className="px-8 py-6 uppercase font-black text-[9px] text-amber-600 bg-amber-100/50 inline-block m-4 rounded-lg px-2 text-center">{u.status}</td>
+                    <td className="px-8 py-6 text-right space-x-2">
+                      <button
+                        onClick={() => setPendingUsers(prev => prev.filter(user => user.id !== u.id))}
+                        className="bg-primary-600 text-white p-2 rounded-lg hover:bg-primary-700 transition-all"
+                        title="Aprobar Usuario"
+                      >
+                        <UserCheck className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // APP CORE VIEW
   return (
     <div className="min-h-screen bg-surface-50">
       <AnimatePresence>
@@ -362,7 +515,23 @@ function App() {
         </div>
 
         <div className="flex items-center gap-2 w-1/3 justify-end">
+          <button
+            onClick={() => setView('auth')}
+            className="p-2 text-surface-400 hover:text-red-600 transition-colors"
+            title="Cerrar Sesión"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
           <div className="flex bg-surface-100 rounded-xl p-1 border border-surface-200">
+            {currentUser?.role === 'superadmin' && (
+              <button
+                onClick={() => setView('admin')}
+                className="px-4 py-1.5 text-[10px] font-black text-amber-600 bg-amber-50 border border-amber-100/50 hover:bg-amber-100 rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
+                title="Panel de Aprobación Administrador"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" /> AGENTES
+              </button>
+            )}
             <button
               onClick={() => handleExport('csv')}
               className="px-3 py-1.5 text-[10px] font-bold text-surface-600 hover:bg-white rounded-lg transition-all flex items-center gap-1"
@@ -405,25 +574,25 @@ function App() {
             <div className="quantum-card p-1.5 flex gap-1 mb-0 rounded-2xl mx-1 bg-surface-100/50 border-none shadow-none">
               <button
                 onClick={() => setActiveMode('search')}
-                className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-tighter rounded-xl transition-all ${activeMode === 'search' ? 'bg-white shadow-sm text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
+                className={`flex-1 py-2 text-[10px] font-black uppercase tracking-tight rounded-xl transition-all ${activeMode === 'search' ? 'bg-white shadow-md text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
               >
                 Industria
               </button>
               <button
                 onClick={() => setActiveMode('domain')}
-                className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-tighter rounded-xl transition-all ${activeMode === 'domain' ? 'bg-white shadow-sm text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
+                className={`flex-1 py-2 text-[10px] font-black uppercase tracking-tight rounded-xl transition-all ${activeMode === 'domain' ? 'bg-white shadow-md text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
               >
                 Dominio
               </button>
               <button
                 onClick={() => setActiveMode('asalariado')}
-                className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-tighter rounded-xl transition-all ${activeMode === 'asalariado' ? 'bg-white shadow-sm text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
+                className={`flex-1 py-2 text-[10px] font-black uppercase tracking-tight rounded-xl transition-all ${activeMode === 'asalariado' ? 'bg-primary-600 shadow-lg shadow-primary-500/20 text-white' : 'text-surface-500 hover:text-surface-700'}`}
               >
                 Asalariado
               </button>
               <button
                 onClick={() => setActiveMode('direct')}
-                className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-tighter rounded-xl transition-all ${activeMode === 'direct' ? 'bg-white shadow-sm text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
+                className={`flex-1 py-2 text-[10px] font-black uppercase tracking-tight rounded-xl transition-all ${activeMode === 'direct' ? 'bg-white shadow-md text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
               >
                 URL
               </button>
@@ -827,7 +996,7 @@ function App() {
                           <td className="px-6 py-5">
                             <div className="text-[10px] space-y-1">
                               <div className="text-surface-600 flex items-center gap-1.5 font-medium">
-                                <Globe className="w-2.5 h-2.5" /> {lead.address}
+                                <MapPin className="w-2.5 h-2.5" /> {lead.address}
                               </div>
                               <div className="text-primary-600/70 flex items-center gap-1.5 font-bold uppercase tracking-tighter">
                                 <Plus className="w-2.5 h-2.5" /> {lead.socials}
