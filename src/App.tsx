@@ -339,19 +339,20 @@ function App() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-sm font-bold text-surface-700 flex items-center gap-2">
-                          <Search className="w-3.5 h-3.5 text-primary-600" /> Categoría
+                          <Search className="w-3.5 h-3.5 text-primary-600" /> Categoría / Industria
                         </label>
-                        <select
+                        <input
+                          list="categories"
                           className="w-full px-3 py-2.5 rounded-xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all text-sm"
+                          placeholder="Elegir o escribir..."
                           value={query}
                           onChange={(e) => setQuery(e.target.value)}
-                          title="Categoría"
-                        >
-                          <option value="">Seleccionar...</option>
+                        />
+                        <datalist id="categories">
                           {INDUSTRY_CATEGORIES.map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
+                            <option key={cat} value={cat} />
                           ))}
-                        </select>
+                        </datalist>
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-sm font-bold text-surface-700 flex items-center gap-2">
