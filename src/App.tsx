@@ -61,10 +61,13 @@ function App() {
   const [targetUrl, setTargetUrl] = useState('');
   const [showLegalWarning, setShowLegalWarning] = useState(false);
   const [filters, setFilters] = useState({
+    minConfidence: 80,
     hasEmail: false,
-    hasWhatsapp: false,
-    allResults: true,
-    deepSearch: false
+    hasPhone: false,
+    deepSearch: false,
+    sourceLayer: 'maps', // 'maps' | 'meta' | 'directorios'
+    radius: 5, // km
+    onlyRecents: true
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [leads, setLeads] = useState<Lead[]>(MOCK_LEADS);
@@ -411,44 +414,51 @@ function App() {
                   </div>
                 )}
 
-                <div className="py-4 space-y-3 border-t border-surface-100 mt-4">
-                  <label className="block text-xs font-bold text-surface-400 uppercase tracking-widest">Requisitos de Contacto</label>
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <div className="relative">
-                      <input
-                        type="checkbox"
-                        className="sr-only peer"
-                        checked={filters.hasEmail}
-                        onChange={(e) => setFilters({ ...filters, hasEmail: e.target.checked, allResults: false })}
-                      />
-                      <div className="w-10 h-6 bg-surface-200 rounded-full peer peer-checked:bg-primary-600 transition-colors" />
-                      <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm" />
+                <div className="py-4 space-y-4 border-t border-surface-100 mt-4">
+                  <div>
+                    <label className="block text-xs font-bold text-surface-400 uppercase tracking-widest mb-3">Fuente de Datos (Capas)</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['maps', 'meta', 'directorios'].map(layer => (
+                        <button
+                          key={layer}
+                          onClick={() => setFilters({ ...filters, sourceLayer: layer })}
+                          className={`px-2 py-2 rounded-xl text-[10px] font-bold border transition-all ${filters.sourceLayer === layer
+                              ? 'bg-primary-50 border-primary-200 text-primary-700 shadow-sm'
+                              : 'bg-surface-50 border-surface-200 text-surface-500 hover:bg-white'
+                            }`}
+                        >
+                          {layer === 'maps' ? 'G. Maps' : layer === 'meta' ? 'Meta Ads' : 'Colegios'}
+                        </button>
+                      ))}
                     </div>
-                    <span className="text-sm font-medium text-surface-600 group-hover:text-surface-900 transition-colors">Debe tener Email</span>
-                  </label>
+                  </div>
 
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <div className="relative">
-                      <input
-                        type="checkbox"
-                        className="sr-only peer"
-                        checked={filters.hasWhatsapp}
-                        onChange={(e) => setFilters({ ...filters, hasWhatsapp: e.target.checked, allResults: false })}
-                      />
-                      <div className="w-10 h-6 bg-surface-200 rounded-full peer peer-checked:bg-primary-600 transition-colors" />
-                      <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm" />
-                    </div>
-                    <span className="text-sm font-medium text-surface-600 group-hover:text-surface-900 transition-colors">Debe tener WhatsApp</span>
-                  </label>
-
-                  <label className="flex items-center gap-3 cursor-pointer group pt-2">
+                  <div>
+                    <label className="block text-xs font-bold text-surface-400 uppercase tracking-widest mb-1">Radio de Búsqueda: {filters.radius}km</label>
                     <input
-                      type="checkbox"
-                      className="w-4 h-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
-                      checked={filters.allResults}
-                      onChange={(e) => setFilters({ ...filters, allResults: e.target.checked, hasEmail: !e.target.checked && filters.hasEmail, hasWhatsapp: !e.target.checked && filters.hasWhatsapp })}
+                      type="range"
+                      min="1" max="50"
+                      value={filters.radius}
+                      onChange={(e) => setFilters({ ...filters, radius: parseInt(e.target.value) })}
+                      className="w-full h-1.5 bg-surface-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
                     />
-                    <span className="text-sm font-medium text-surface-600 group-hover:text-surface-900 transition-colors">Traer todos los hallados</span>
+                  </div>
+
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={filters.onlyRecents}
+                        onChange={(e) => setFilters({ ...filters, onlyRecents: e.target.checked })}
+                      />
+                      <div className="w-10 h-6 bg-surface-200 rounded-full peer peer-checked:bg-primary-600 transition-colors" />
+                      <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-surface-600 block group-hover:text-surface-900 transition-colors">Actividad Reciente</span>
+                      <span className="text-[10px] text-surface-400 italic">Filtrar negocios inactivos</span>
+                    </div>
                   </label>
 
                   <div className="pt-4 border-t border-surface-100">
