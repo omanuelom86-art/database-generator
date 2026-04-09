@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Database,
   Search,
@@ -14,7 +14,8 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  RotateCcw
+  RotateCcw,
+  Square
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -78,6 +79,7 @@ function App() {
   const [leads, setLeads] = useState<Lead[]>(MOCK_LEADS);
   const [stats, setStats] = useState({ total: 2, withEmail: 2, withPhone: 2 });
   const [trackingLogs, setTrackingLogs] = useState<string[]>([]);
+  const searchInterval = useRef<number | null>(null);
 
   const addLog = (msg: string) => {
     setTrackingLogs(prev => [msg, ...prev].slice(0, 5));
@@ -101,6 +103,7 @@ function App() {
   };
 
   const handleGenerate = () => {
+    if (searchInterval.current) clearInterval(searchInterval.current);
     setIsGenerating(true);
     setTrackingLogs([]);
     addLog(`> Iniciando rastreo omnicanal de alto impacto en ${province}...`);
@@ -109,7 +112,7 @@ function App() {
     let count = 0;
     const maxSimulated = 10000; // Truly show a lot
 
-    const interval = setInterval(() => {
+    searchInterval.current = setInterval(() => {
       // BURST MODE: 20 leads per tick
       for (let i = 0; i < 20; i++) {
         count++;
@@ -146,8 +149,7 @@ function App() {
       }
 
       if (count >= maxSimulated) {
-        clearInterval(interval);
-        setIsGenerating(false);
+        handleStop();
         addLog(`[ÉXITO] Ráfaga inicial completa. Sincronizando con base de datos de 1,200,000 registros...`);
         setStats({
           total: 1245000,
@@ -156,6 +158,15 @@ function App() {
         });
       }
     }, 100); // 200 leads per second
+  };
+
+  const handleStop = () => {
+    if (searchInterval.current) {
+      clearInterval(searchInterval.current);
+      searchInterval.current = null;
+    }
+    setIsGenerating(false);
+    addLog(`[AVISO] Búsqueda detenida por el usuario.`);
   };
 
   const handleEnrich = (id?: number) => {
@@ -422,6 +433,7 @@ function App() {
                       className="w-full px-5 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm"
                       value={targetUrl}
                       onChange={(e) => setTargetUrl(e.target.value)}
+                      title="URL del Sitio"
                     />
                   </div>
                 )}
@@ -457,25 +469,41 @@ function App() {
                       value={filters.radius}
                       onChange={(e) => setFilters({ ...filters, radius: parseInt(e.target.value) })}
                       className="w-full h-1.5 bg-surface-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+                      title="Radio de Búsqueda"
                     />
                   </div>
 
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <div className="relative">
-                      <input
-                        type="checkbox"
-                        className="sr-only peer"
-                        checked={filters.onlyRecents}
-                        onChange={(e) => setFilters({ ...filters, onlyRecents: e.target.checked })}
-                      />
-                      <div className="w-10 h-6 bg-surface-200 rounded-full peer peer-checked:bg-primary-600 transition-colors" />
-                      <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm" />
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium text-surface-600 block group-hover:text-surface-900 transition-colors">Actividad Reciente</span>
-                      <span className="text-[10px] text-surface-400 italic">Filtrar negocios inactivos</span>
-                    </div>
-                  </label>
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={filters.onlyRecents}
+                          onChange={(e) => setFilters({ ...filters, onlyRecents: e.target.checked })}
+                          title="Solo Negocios Activos"
+                        />
+                        <div className="w-10 h-5 bg-surface-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-600"></div>
+                      </div>
+                      <span className="text-xs font-medium text-surface-600 group-hover:text-primary-600 transition-colors">Actividad reciente (Alta Probabilidad)</span>
+                    </label>
+
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={filters.sourceLayer === 'meta'}
+                          onChange={(e) => setFilters({ ...filters, sourceLayer: e.target.checked ? 'meta' : 'all' })}
+                          title="Buscar Anuncios en Facebook"
+                        />
+                        <div className="w-10 h-5 bg-surface-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                      </div>
+                      <span className="text-xs font-medium text-surface-600 group-hover:text-blue-600 transition-colors flex items-center gap-1.5">
+                        <Globe className="w-3 h-3 text-blue-500" /> Buscar Anuncios en Facebook (Meta Ads)
+                      </span>
+                    </label>
+                  </div>
 
                   <div className="pt-4 border-t border-surface-100">
                     <label className="flex items-center gap-3 cursor-pointer group">
@@ -497,7 +525,7 @@ function App() {
                   </div>
                 </div>
 
-                <div className="pt-4">
+                <div className="pt-4 flex gap-2">
                   <button
                     onClick={() => {
                       if (query.toLowerCase().includes('colegio')) {
@@ -507,7 +535,7 @@ function App() {
                       }
                     }}
                     disabled={isGenerating || (activeMode === 'search' ? !query : !targetUrl)}
-                    className="primary-button w-full justify-center disabled:opacity-50 disabled:grayscale"
+                    className="primary-button flex-1 justify-center disabled:opacity-50 disabled:grayscale"
                     title="Iniciar proceso de extracción"
                   >
                     {isGenerating ? (
@@ -522,6 +550,16 @@ function App() {
                       </span>
                     )}
                   </button>
+
+                  {isGenerating && (
+                    <button
+                      onClick={handleStop}
+                      className="px-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl border border-red-100 transition-all flex items-center justify-center group"
+                      title="Detener Búsqueda"
+                    >
+                      <Square size={20} className="fill-red-600 group-hover:scale-110 transition-transform" />
+                    </button>
+                  )}
                 </div>
               </div>
 
