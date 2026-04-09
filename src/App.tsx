@@ -84,6 +84,8 @@ function App() {
     { id: 1, name: 'Jose Figueres', email: 'pepe@cr.com', status: 'pending', date: 'hoy' },
     { id: 2, name: 'Laura Chinchilla', email: 'laura@cr.com', status: 'pending', date: 'ayer' }
   ]);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPass, setLoginPass] = useState('');
   const [activeMode, setActiveMode] = useState<'search' | 'direct' | 'domain' | 'asalariado'>('search');
   const [query, setQuery] = useState('');
   const [targetUrl, setTargetUrl] = useState('');
@@ -300,36 +302,72 @@ function App() {
   };
 
   if (view === 'auth') {
+    const handleLogin = () => {
+      if (loginEmail === 'omanuelom86@gmail.com' && loginPass === 'Mm0101mM*') {
+        setCurrentUser({ name: 'Super Admin', email: loginEmail, role: 'superadmin', isApproved: true });
+        setView('app');
+        addLog('> Sesión iniciada como Super Administrador.');
+      } else if (loginEmail && loginPass) {
+        setView('pending');
+      }
+    };
+
     return (
       <div className="min-h-screen quantum-bg flex items-center justify-center p-6">
-        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="quantum-card max-w-md w-full p-10 space-y-8 bg-white/80 backdrop-blur-2xl">
+        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="quantum-card max-w-md w-full p-10 space-y-8 bg-white/80 backdrop-blur-2xl border-none shadow-2xl">
           <div className="text-center">
-            <div className="w-16 h-16 bg-primary-600 rounded-2xl mx-auto flex items-center justify-center shadow-xl shadow-primary-500/30 mb-6">
-              <Database className="w-8 h-8 text-white" />
+            <div className="w-20 h-20 bg-primary-600 rounded-3xl mx-auto flex items-center justify-center shadow-2xl shadow-primary-500/40 mb-8 rotate-3">
+              <Database className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-3xl font-black text-surface-900 tracking-tight">Nexus AI <span className="text-primary-600">Pro</span></h1>
-            <p className="text-surface-500 mt-2 font-medium">Inicia sesión o regístrate para solicitar acceso corporativo.</p>
+            <h1 className="text-4xl font-black text-surface-900 tracking-tighter">Nexus <span className="text-primary-600">AI</span></h1>
+            <p className="text-surface-500 mt-2 font-medium">Motor de Inteligencia de Leads CR</p>
           </div>
+
           <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest ml-1">Email Corporativo</label>
+              <input
+                type="email"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                placeholder="admin@nexus.ai"
+                className="w-full px-6 py-4 bg-surface-50 border border-surface-200 rounded-2xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all outline-none font-medium"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest ml-1">Contraseña</label>
+              <input
+                type="password"
+                value={loginPass}
+                onChange={(e) => setLoginPass(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-6 py-4 bg-surface-50 border border-surface-200 rounded-2xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all outline-none font-medium"
+              />
+            </div>
+
             <button
-              onClick={() => {
-                setCurrentUser({ name: 'Admin User', role: 'superadmin', isApproved: true });
-                setView('app');
-              }}
-              className="w-full py-4 bg-primary-600 text-white rounded-2xl font-bold shadow-lg shadow-primary-500/30 hover:bg-primary-700 transition-all flex items-center justify-center gap-3"
+              onClick={handleLogin}
+              className="w-full py-5 bg-primary-600 text-white rounded-3xl font-black uppercase tracking-widest text-xs shadow-xl shadow-primary-500/30 hover:bg-primary-700 hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-3"
             >
-              <ShieldCheck className="w-5 h-5" /> Entrar como SUPER ADMIN
+              <ShieldCheck className="w-5 h-5" /> Acceder al Sistema
             </button>
+
+            <div className="relative py-4">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-surface-200"></div></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-white/50 px-4 text-surface-400 font-bold tracking-widest">O solicita entrada</span></div>
+            </div>
+
             <button
               onClick={() => setView('pending')}
-              className="w-full py-4 bg-surface-100 text-surface-700 rounded-2xl font-bold hover:bg-surface-200 transition-all flex items-center justify-center gap-3"
+              className="w-full py-4 bg-white border border-surface-200 text-surface-700 rounded-2xl font-bold hover:bg-surface-50 transition-all flex items-center justify-center gap-3 shadow-sm"
             >
-              <UserPlus className="w-5 h-5" /> Solicitar Nuevo Acceso
+              <UserPlus className="w-5 h-5" /> Registrar Nuevo Agente
             </button>
           </div>
-          <div className="pt-4 text-center border-t border-surface-100">
-            <p className="text-[10px] text-surface-400 font-bold uppercase tracking-widest leading-relaxed">
-              PLATAFORMA RESTRINGIDA: Los accesos deben ser aprobados manualmente por el Super Administrador de Jazm.io
+
+          <div className="pt-6 text-center">
+            <p className="text-[9px] text-surface-400 font-bold uppercase tracking-[0.2em] leading-relaxed">
+              PLATAFORMA RESTRINGIDA PARA JAZM.IO<br />ACCESO POR INVITACIÓN ÚNICAMENTE
             </p>
           </div>
         </motion.div>
