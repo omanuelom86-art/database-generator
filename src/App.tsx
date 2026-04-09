@@ -30,7 +30,7 @@ function App() {
   const [location, setLocation] = useState('');
   const [targetUrl, setTargetUrl] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [leads] = useState(MOCK_LEADS);
+  const [leads, setLeads] = useState(MOCK_LEADS);
 
   const handleGenerate = () => {
     setIsGenerating(true);
@@ -38,6 +38,35 @@ function App() {
     setTimeout(() => {
       setIsGenerating(false);
     }, 3000);
+  };
+
+  const downloadCSV = () => {
+    const headers = ['Company', 'Industry', 'Email', 'Phone', 'Confidence'];
+    const csvContent = [
+      headers.join(','),
+      ...leads.map(lead => [
+        `"${lead.company}"`,
+        `"${lead.industry}"`,
+        lead.email,
+        `"${lead.phone}"`,
+        lead.confidence
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `leads_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const removeDuplicates = () => {
+    const uniqueLeads = Array.from(new Map(leads.map(lead => [lead.email, lead])).values());
+    setLeads(uniqueLeads);
   };
 
   return (
@@ -191,9 +220,20 @@ function App() {
           <section className="lg:col-span-2 space-y-6">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-2xl font-bold text-surface-800">Bases Generadas</h2>
-              <button className="secondary-button text-xs !py-1.5">
-                <Download className="w-3.5 h-3.5" /> Exportar CSV
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={removeDuplicates}
+                  className="secondary-button text-xs !py-1.5"
+                >
+                  <AlertCircle className="w-3.5 h-3.5" /> Borrar Duplicados
+                </button>
+                <button
+                  onClick={downloadCSV}
+                  className="secondary-button text-xs !py-1.5 bg-primary-50 border-primary-100 text-primary-700"
+                >
+                  <Download className="w-3.5 h-3.5" /> Exportar CSV
+                </button>
+              </div>
             </div>
 
             <div className="quantum-card overflow-hidden">
