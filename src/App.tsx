@@ -84,23 +84,19 @@ function App() {
   };
 
   const getBusinessName = (category: string) => {
-    const cat = category.toLowerCase();
-    const suffixes = ['CR', 'Solutions', 'Global', 'Logistics', 'Gourmet', 'Legal'];
-    const prefixes = ['Soda', 'Restaurante', 'Taller', 'Bufete', 'Agencia'];
-
-    if (cat.includes('restaurante') || cat.includes('comida') || cat.includes('soda')) {
-      const names = ['El Gran Sabor', 'La Casona', 'Pura Vida', 'Doña María', 'El Fogón'];
-      return `${prefixes[Math.floor(Math.random() * 2)]} ${names[Math.floor(Math.random() * names.length)]}`;
+    const suffixes = ['Consultores', 'S.A.', 'Grupó', 'CR', 'Asesores', 'Logística'];
+    if (filters.sourceLayer === 'gobierno') {
+      const govPrefixes = ['Proveedor', 'Contribuyente', 'Patente', 'Pyme', 'Exportador'];
+      return `${govPrefixes[Math.floor(Math.random() * govPrefixes.length)]} - ${category.toUpperCase()} ${Math.floor(Math.random() * 900) + 100}`;
     }
-    if (cat.includes('abogado') || cat.includes('ley')) {
-      const names = ['Arias', 'Zamora', 'Chaves', 'Quesada', 'Mora'];
-      return `Bufete ${names[Math.floor(Math.random() * names.length)]} & Asociados`;
+    if (category.toLowerCase() === 'restaurante') {
+      const names = ['La Casona', 'El Fogón', 'Gallo Pinto Express', 'Soda Tapia', 'Sabor Tico'];
+      return names[Math.floor(Math.random() * names.length)] + ' ' + suffixes[Math.floor(Math.random() * suffixes.length)];
     }
-    if (cat.includes('taller') || cat.includes('mecanico')) {
+    if (category.toLowerCase() === 'taller') {
       const names = ['Los Gemelos', 'San Judas', 'Automotriz J&M', 'El Rápido'];
       return `Taller ${names[Math.floor(Math.random() * names.length)]}`;
     }
-
     return `${category.charAt(0).toUpperCase() + category.slice(1)} ${suffixes[Math.floor(Math.random() * suffixes.length)]}`;
   };
 
@@ -433,8 +429,8 @@ function App() {
                 <div className="py-4 space-y-4 border-t border-surface-100 mt-4">
                   <div>
                     <label className="block text-xs font-bold text-surface-400 uppercase tracking-widest mb-3">Fuente de Datos (Capas)</label>
-                    <div className="grid grid-cols-5 gap-2">
-                      {['all', 'maps', 'meta', 'directorios', 'guia'].map(layer => (
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                      {['all', 'maps', 'meta', 'directorios', 'guia', 'gobierno'].map(layer => (
                         <button
                           key={layer}
                           onClick={() => setFilters({ ...filters, sourceLayer: layer })}
@@ -443,7 +439,11 @@ function App() {
                             : 'bg-surface-50 border-surface-200 text-surface-500 hover:bg-white'
                             }`}
                         >
-                          {layer === 'all' ? 'TODAS' : layer === 'maps' ? 'G. Maps' : layer === 'meta' ? 'Meta Ads' : layer === 'directorios' ? 'Colegios' : 'Guía Tel.'}
+                          {layer === 'all' ? 'TODAS' :
+                            layer === 'maps' ? 'G. Maps' :
+                              layer === 'meta' ? 'Meta Ads' :
+                                layer === 'directorios' ? 'Colegios' :
+                                  layer === 'guia' ? 'Guía Tel.' : 'GOBIERNO'}
                         </button>
                       ))}
                     </div>
