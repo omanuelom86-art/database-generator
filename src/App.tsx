@@ -107,58 +107,59 @@ function App() {
   const handleGenerate = () => {
     setIsGenerating(true);
     setTrackingLogs([]);
-    addLog(`> Iniciando rastreo omnicanal (Todas las Capas) en ${province}...`);
+    addLog(`> Iniciando rastreo omnicanal de alto impacto en ${province}...`);
 
     let currentLeads = [...leads];
     let count = 0;
-    const maxSimulated = 1000; // Limit leads in memory for UI stability
+    const maxSimulated = 10000; // Truly show a lot
 
     const interval = setInterval(() => {
-      count++;
-      const name = getBusinessName(query || 'Servicios');
-      const layer = filters.sourceLayer === 'all'
-        ? ['G. Maps', 'Meta Ads', 'Colegios', 'Guía Tel'][Math.floor(Math.random() * 4)]
-        : filters.sourceLayer;
+      // BURST MODE: 20 leads per tick
+      for (let i = 0; i < 20; i++) {
+        count++;
+        const name = getBusinessName(query || 'Servicios');
+        const layer = filters.sourceLayer === 'all'
+          ? ['G. Maps', 'Meta Ads', 'Colegios', 'Guía Tel'][Math.floor(Math.random() * 4)]
+          : ['G. Maps', 'Meta Ads', 'Colegios', 'Guía Tel'][Math.floor(Math.random() * 4)];
 
-      const newLead = {
-        id: Date.now() + count,
-        company: name,
-        industry: query.toUpperCase() || 'SERVICIOS',
-        email: Math.random() > 0.4 ? `contacto@${name.toLowerCase().replace(/\s/g, '')}.com` : '',
-        phone: Math.random() > 0.5 ? `+506 ${Math.floor(Math.random() * 80000000) + 10000000}` : '',
-        address: `${province === 'Todo el país' ? 'Costa Rica' : province}, CR`,
-        socials: layer.toUpperCase(),
-        confidence: Math.floor(Math.random() * 20) + 75,
-        status: 'verified' as Lead['status']
-      };
+        const newLead = {
+          id: Date.now() + count,
+          company: name,
+          industry: query.toUpperCase() || 'SERVICIOS',
+          email: Math.random() > 0.4 ? `contacto@${name.toLowerCase().replace(/\s/g, '')}.com` : '',
+          phone: Math.random() > 0.5 ? `+506 ${Math.floor(Math.random() * 80000000) + 10000000}` : '',
+          address: `${COSTA_RICA_PROVINCES[Math.floor(Math.random() * COSTA_RICA_PROVINCES.length)]}, CR`,
+          socials: layer,
+          confidence: Math.floor(Math.random() * 20) + 75,
+          status: 'verified' as Lead['status']
+        };
 
-      currentLeads = [newLead, ...currentLeads];
-
-      // Batch update to avoid UI lag
-      if (count % 5 === 0 || count < 20) {
-        setLeads([...currentLeads.slice(0, 500)]); // Keep last 500 in UI for performance
+        currentLeads = [newLead, ...currentLeads];
       }
 
+      setLeads([...currentLeads.slice(0, 2000)]); // Keep 2k in UI view
+
       setStats(prev => ({
-        total: prev.total + 1,
-        withEmail: prev.withEmail + (newLead.email ? 1 : 0),
-        withPhone: prev.withPhone + (newLead.phone ? 1 : 0)
+        total: prev.total + 20,
+        withEmail: prev.withEmail + 8,
+        withPhone: prev.withPhone + 10
       }));
 
-      if (count % 10 === 0) {
-        addLog(`[RASTREO] Hallado en ${layer}: ${name}`);
+      if (count % 100 === 0) {
+        addLog(`[RASTREO] Descubiertos ${count} registros hasta ahora...`);
       }
 
       if (count >= maxSimulated) {
         clearInterval(interval);
         setIsGenerating(false);
-        addLog(`[ÉXITO] Extracción completa. Rastreando el resto en background (n8n Cloud)...`);
-        setStats(prev => ({
-          ...prev,
-          total: prev.total + 999000 // Total simulation of 1 Million
-        }));
+        addLog(`[ÉXITO] Ráfaga inicial completa. Sincronizando con base de datos de 1,200,000 registros...`);
+        setStats({
+          total: 1245000,
+          withEmail: 890400,
+          withPhone: 920500
+        });
       }
-    }, 50); // High speed feed
+    }, 100); // 200 leads per second
   };
 
   const handleEnrich = (id?: number) => {
