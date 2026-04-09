@@ -1,8 +1,0 @@
-{
-    "rewrites": [
-        {
-            "source": "/api/nexus-leads",
-            "destination": "https://n8n-production-c420.up.railway.app/webhook/nexus-leads"
-        }
-    ]
-}

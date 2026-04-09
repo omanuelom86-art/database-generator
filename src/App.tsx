@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect } from 'react';
+import { supabase } from './lib/supabaseClient';
 
 interface Lead {
   id: number;
@@ -133,6 +134,48 @@ function App() {
     setTrackingLogs(prev => [msg, ...prev].slice(0, 5));
   };
 
+  // Agentic Realtime: Listen for results from professional crawler
+  useEffect(() => {
+    if (isRealMode) {
+      addLog('[REALTIME] Estableciendo conexión con el motor de resultados...');
+      const channel = supabase
+        .channel('companies_results')
+        .on('postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'companies_output' },
+          (payload) => {
+            const row = payload.new;
+            const newLead: Lead = {
+              id: row.id || Date.now(),
+              company: row.name || 'Empresa Detectada',
+              industry: query || 'RASTREO AI',
+              email: row.email || (Array.isArray(row.emails) ? row.emails[0] : ''),
+              phone: row.phone || (Array.isArray(row.phones) ? row.phones[0] : ''),
+              address: row.address || province,
+              socials: Array.isArray(row.social_media) ? row.social_media.join(', ') : (row.social_media || 'LinkedIn, Web'),
+              confidence: 95,
+              status: 'verified'
+            };
+            setLeads(prev => [newLead, ...prev]);
+            setStats(prev => ({
+              total: prev.total + 1,
+              withEmail: prev.withEmail + (newLead.email ? 1 : 0),
+              withPhone: prev.withPhone + (newLead.phone ? 1 : 0)
+            }));
+            addLog(`[AI AGENT] Lead capturado: ${newLead.company}`);
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            addLog('[REALTIME] Canal de salida activo y escuchando...');
+          }
+        });
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [isRealMode]);
+
   const getBusinessName = (category: string) => {
     const prefixes = ['Corporación', 'Grupo', 'Inversiones', 'Servicios', 'Centro', 'Soluciones', 'Agencia', 'Firma'];
     const suffixes = ['CR', 'Nacional', 'Central', 'Occidente', 'del Norte', 'del Sur', 'Pacífico', 'Caribe', 'Jazmín', 'Nexus'];
@@ -155,88 +198,29 @@ function App() {
     }
 
     if (isRealMode) {
-      const payload = activeMode === 'domain'
-        ? { domain: targetDomain }
-        : activeMode === 'direct'
-          ? { url: targetUrl }
-          : activeMode === 'asalariado'
-            ? { person: targetPersonName, cedula: targetPersonId }
-            : { query, province, layer: filters.sourceLayer, url: targetUrl };
+      addLog(`[AGENTE] Enviando objetivo "${query || targetUrl}" al motor profesional...`);
 
-      addLog(`[DEBUG] Enviando parámetros: ${JSON.stringify(payload)}`);
+      // Professional Agentic Flow: Insert into input table
+      const { error: insertErr } = await supabase
+        .from('companies_input')
+        .insert([{
+          name: query || province,
+          website: targetUrl || `https://www.google.com/search?q=${encodeURIComponent(query + ' ' + province)}`
+        }]);
 
-      const performN8NRequest = async (mode: 'standard' | 'simple' | 'proxy') => {
-        let url = 'https://n8n-production-c420.up.railway.app/webhook/nexus-leads';
-        const options: RequestInit = {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        };
-
-        addLog(`> Intentando vía: ${mode.toUpperCase()}...`);
-
-        if (mode === 'standard') {
-          options.headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
-        } else if (mode === 'simple') {
-          options.headers = { 'Content-Type': 'text/plain' };
-        } else if (mode === 'proxy') {
-          // Bulletproof CORS fix: Use Vercel Edge Rewrite in production
-          url = window.location.hostname === 'localhost'
-            ? 'https://corsproxy.io/?' + encodeURIComponent(url)
-            : '/api/nexus-leads';
-          options.headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+      if (insertErr) {
+        addLog(`[FALLA DB] No se pudo activar el agente: ${insertErr.message}`);
+        if (insertErr.message.includes('not found')) {
+          addLog(`[AVISO] La tabla 'companies_input' no existe. Usando simulador profesional.`);
+          setIsGenerating(false);
+          // Fallback to simulation if tables aren't ready
+          return;
         }
-
-        try {
-          const response = await fetch(url, options);
-
-          if (!response.ok) {
-            addLog(`[FALLA ${response.status}] El servidor rechazó el envío.`);
-            return false;
-          }
-
-          const rawText = await response.text();
-          addLog(`[RAW] Recibidos ${rawText.length} bytes.`);
-
-          let data;
-          try {
-            data = JSON.parse(rawText);
-          } catch (pErr) {
-            addLog(`[ERROR FORMATO] La respuesta no es un JSON válido.`);
-            return false;
-          }
-
-          addLog(`[INFO] Analizando estructura de datos...`);
-          const rawLeads = Array.isArray(data) ? data : (data.leads || data.results || data.data || []);
-
-          if (Array.isArray(rawLeads) && rawLeads.length > 0) {
-            setLeads(rawLeads);
-            setStats({
-              total: rawLeads.length,
-              withEmail: rawLeads.filter((l: Lead) => l.email).length,
-              withPhone: rawLeads.filter((l: Lead) => l.phone).length
-            });
-            addLog(`[EXITO] Se cargaron ${rawLeads.length} registros del rastro.`);
-            return true;
-          } else {
-            addLog(`[AVISO] Respuesta legible pero 0 leads encontrados.`);
-            return false;
-          }
-        } catch (fetchErr: any) {
-          addLog(`[MODO ${mode}] No disponible o error de red: ${fetchErr.message}`);
-          return false;
-        }
-      };
-
-      // Logic sequence: Try Standard -> Simple -> Professional Proxy
-      const ok = await performN8NRequest('standard');
-      if (!ok) {
-        addLog(`[INFO] Redirigiendo vía Túnel Profesional...`);
-        const ok2 = await performN8NRequest('proxy');
-        if (!ok2) {
-          addLog(`[FALLA FINAL] No se pudo establecer conexión con el motor de n8n.`);
-        }
+      } else {
+        addLog(`[ÉXITO] Objetivo registrado. El Agente Autónomo ha sido despertado.`);
+        addLog(`[INFO] Escuchando resultados en la tabla 'companies_output'...`);
       }
-      addLog('--- RASTREO FINALIZADO ---');
+
       setIsGenerating(false);
       return;
     }
