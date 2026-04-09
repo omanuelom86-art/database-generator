@@ -205,7 +205,7 @@ function App() {
         if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
           try {
             await performN8NRequest(true); // Retry in Simple Mode
-          } catch (retryErr: any) {
+          } catch (_retryErr: any) {
             addLog(`[ERROR DE SEGURIDAD] Bloqueo persistente de CORS / Red.`);
             addLog(`> DIAGNÓSTICO: Tu servidor n8n RECHAZÓ la conexión.`);
             addLog(`> SOLUCIÓN: En n8n, activa "Allowed Origins: *" en el nodo Webhook.`);
