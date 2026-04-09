@@ -24,11 +24,24 @@ const MOCK_LEADS = [
   { id: 3, company: 'SwiftLogistics', industry: 'Logistics', email: 'info@swiftlog.com', phone: '+34 956 789 123', confidence: 85, status: 'pending' },
 ];
 
+const SUGGESTED_PLATFORMS = [
+  { name: 'Google Maps', url: 'https://www.google.com/maps', icon: Globe },
+  { name: 'Mercado Libre', url: 'https://www.mercadolibre.com', icon: Building2 },
+  { name: 'Facebook', url: 'https://www.facebook.com', icon: Globe },
+  { name: 'CR Autos', url: 'https://www.crautos.com', icon: Building2 },
+];
+
 function App() {
   const [activeMode, setActiveMode] = useState<'search' | 'direct'>('search');
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('');
+  const [province, setProvince] = useState('');
   const [targetUrl, setTargetUrl] = useState('');
+  const [filters, setFilters] = useState({
+    hasEmail: false,
+    hasWhatsapp: false,
+    allResults: true
+  });
   const [isGenerating, setIsGenerating] = useState(false);
   const [leads, setLeads] = useState(MOCK_LEADS);
 
@@ -124,11 +137,11 @@ function App() {
               <h2 className="text-lg font-bold mb-6 flex items-center gap-2">
                 {activeMode === 'search' ? (
                   <>
-                    <Search className="w-5 h-5 text-primary-600" /> Configuración de Búsqueda
+                    <Search className="w-5 h-5 text-primary-600" /> Configuración Pro
                   </>
                 ) : (
                   <>
-                    <Globe className="w-5 h-5 text-primary-600" /> Scraping de URL Directa
+                    <Globe className="w-5 h-5 text-primary-600" /> Scraping de URL
                   </>
                 )}
               </h2>
@@ -137,42 +150,104 @@ function App() {
                 {activeMode === 'search' ? (
                   <>
                     <div>
-                      <label className="block text-sm font-semibold text-surface-700 mb-2">Público Objetivo</label>
+                      <label className="block text-sm font-semibold text-surface-700 mb-2">Categoría / Industria</label>
                       <input
                         type="text"
-                        placeholder="Eje: Agencias de Marketing, Restaurantes..."
+                        placeholder="Eje: Bienes Raíces, Repuestos..."
                         className="w-full px-5 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-surface-700 mb-2">Ubicación</label>
-                      <input
-                        type="text"
-                        placeholder="Eje: España, Madrid o Madrid + 50km"
-                        className="w-full px-5 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm"
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-surface-700 mb-2">Provincia</label>
+                        <input
+                          type="text"
+                          placeholder="Eje: San José"
+                          className="w-full px-4 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all text-sm"
+                          value={province}
+                          onChange={(e) => setProvince(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-surface-700 mb-2">Ubicación</label>
+                        <input
+                          type="text"
+                          placeholder="+ Km"
+                          className="w-full px-4 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all text-sm"
+                          value={location}
+                          onChange={(e) => setLocation(e.target.value)}
+                        />
+                      </div>
                     </div>
                   </>
                 ) : (
                   <div>
-                    <label className="block text-sm font-semibold text-surface-700 mb-2">URL del Sitio (Eje: Mercado Libre, FB, Maps...)</label>
+                    <label className="block text-sm font-semibold text-surface-700 mb-1.5">Plataformas Sugeridas</label>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {SUGGESTED_PLATFORMS.map((plat) => (
+                        <button
+                          key={plat.name}
+                          onClick={() => setTargetUrl(plat.url)}
+                          className={`px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all flex items-center gap-1 ${targetUrl === plat.url ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-surface-600 border-surface-200 hover:border-primary-300'}`}
+                        >
+                          <plat.icon className="w-3 h-3" /> {plat.name}
+                        </button>
+                      ))}
+                    </div>
+                    <label className="block text-sm font-semibold text-surface-700 mb-2">URL del Sitio</label>
                     <input
                       type="url"
-                      placeholder="https://www.ejemplo.com/busqueda-leads"
+                      placeholder="https://www.ejemplo.com"
                       className="w-full px-5 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm"
                       value={targetUrl}
                       onChange={(e) => setTargetUrl(e.target.value)}
                     />
-                    <p className="mt-2 text-[10px] text-surface-400 font-medium">
-                      ADVERTENCIA: Algunos sitios requieren el uso de proxies. n8n intentará extraer datos públicos de forma ética.
-                    </p>
                   </div>
                 )}
+
+                <div className="py-4 space-y-3 border-t border-surface-100 mt-4">
+                  <label className="block text-xs font-bold text-surface-400 uppercase tracking-widest">Requisitos de Contacto</label>
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={filters.hasEmail}
+                        onChange={(e) => setFilters({ ...filters, hasEmail: e.target.checked, allResults: false })}
+                      />
+                      <div className="w-10 h-6 bg-surface-200 rounded-full peer peer-checked:bg-primary-600 transition-colors" />
+                      <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm" />
+                    </div>
+                    <span className="text-sm font-medium text-surface-600 group-hover:text-surface-900 transition-colors">Debe tener Email</span>
+                  </label>
+
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={filters.hasWhatsapp}
+                        onChange={(e) => setFilters({ ...filters, hasWhatsapp: e.target.checked, allResults: false })}
+                      />
+                      <div className="w-10 h-6 bg-surface-200 rounded-full peer peer-checked:bg-primary-600 transition-colors" />
+                      <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm" />
+                    </div>
+                    <span className="text-sm font-medium text-surface-600 group-hover:text-surface-900 transition-colors">Debe tener WhatsApp</span>
+                  </label>
+
+                  <label className="flex items-center gap-3 cursor-pointer group pt-2">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+                      checked={filters.allResults}
+                      onChange={(e) => setFilters({ ...filters, allResults: e.target.checked, hasEmail: !e.target.checked && filters.hasEmail, hasWhatsapp: !e.target.checked && filters.hasWhatsapp })}
+                    />
+                    <span className="text-sm font-medium text-surface-600 group-hover:text-surface-900 transition-colors">Traer todos los clientes hallados</span>
+                  </label>
+                </div>
 
                 <div className="pt-4">
                   <button
