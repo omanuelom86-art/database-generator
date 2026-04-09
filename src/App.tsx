@@ -36,7 +36,7 @@ const MOCK_LEADS: Lead[] = [
 ];
 
 const COSTA_RICA_PROVINCES = [
-  'San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'
+  'Todo el país', 'San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'
 ];
 
 const INDUSTRY_CATEGORIES = [
@@ -111,7 +111,7 @@ function App() {
 
     let currentLeads = [...leads];
     let count = 0;
-    const maxSimulated = 15; // Show 15 quickly, then stop
+    const maxSimulated = 80; // Show 80 quickly
 
     const interval = setInterval(() => {
       count++;
@@ -120,12 +120,12 @@ function App() {
         id: Date.now() + count,
         company: name,
         industry: query.toUpperCase() || 'SERVICIOS',
-        email: Math.random() > 0.4 ? `contacto@${name.toLowerCase().replace(/\s/g, '')}.cr` : '',
+        email: Math.random() > 0.4 ? `contacto@${name.toLowerCase().replace(/\s/g, '')}.com` : '',
         phone: Math.random() > 0.5 ? `+506 ${Math.floor(Math.random() * 80000000) + 10000000}` : '',
-        address: `${province}, Costa Rica`,
-        socials: 'FB, IG',
+        address: `${province === 'Todo el país' ? 'Costa Rica' : province}, CR`,
+        socials: 'FB, IG, LI',
         confidence: Math.floor(Math.random() * 20) + 75,
-        status: 'pending' as Lead['status']
+        status: 'verified' as Lead['status']
       };
 
       currentLeads = [newLead, ...currentLeads];
@@ -135,19 +135,19 @@ function App() {
         withEmail: prev.withEmail + (newLead.email ? 1 : 0),
         withPhone: prev.withPhone + (newLead.phone ? 1 : 0)
       }));
-      addLog(`[RASTREO] Hallado: ${name}`);
+      addLog(`[RASTREO] Hallado en ${province}: ${name}`);
 
       if (count >= maxSimulated) {
         clearInterval(interval);
         setIsGenerating(false);
-        addLog(`[ÉXITO] Extracción completada. 1,240 registros en buffer.`);
+        addLog(`[ÉXITO] Extracción completada. 1,000+ registros en buffer.`);
         // Fake the statistic to look high
         setStats(prev => ({
           ...prev,
-          total: prev.total + 1200 // Simulate 1k+ found overall
+          total: prev.total + 1200 // Final jump to look high
         }));
       }
-    }, 400);
+    }, 150);
   };
 
   const handleEnrich = (id?: number) => {
