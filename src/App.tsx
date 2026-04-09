@@ -179,7 +179,10 @@ function App() {
         } else if (mode === 'simple') {
           options.headers = { 'Content-Type': 'text/plain' };
         } else if (mode === 'proxy') {
-          url = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+          // Bulletproof CORS fix: Use Vercel Edge Rewrite in production
+          url = window.location.hostname === 'localhost'
+            ? 'https://corsproxy.io/?' + encodeURIComponent(url)
+            : '/api/nexus-leads';
           options.headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
         }
 
