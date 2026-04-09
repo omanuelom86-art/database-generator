@@ -17,16 +17,18 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Mock data for initial UI verification
 const MOCK_LEADS = [
-  { id: 1, company: 'TechNova Solutions', industry: 'Software', email: 'contact@technova.com', phone: '+34 912 345 678', confidence: 98, status: 'verified' },
-  { id: 2, company: 'GreenEdge Energy', industry: 'Renewables', email: 'sales@greenedge.es', phone: '+34 934 567 890', confidence: 92, status: 'verified' },
-  { id: 3, company: 'SwiftLogistics', industry: 'Logistics', email: 'info@swiftlog.com', phone: '+34 956 789 123', confidence: 85, status: 'pending' },
+  { id: 1, company: 'TechNova Solutions', industry: 'Software', email: 'contact@technova.cr', phone: '+506 2222 3456', confidence: 98, status: 'verified' },
+  { id: 2, company: 'GreenEdge CR', industry: 'Renewables', email: 'ventas@greenedge.cr', phone: '+506 8888 7777', confidence: 92, status: 'verified' },
+];
+
+const COSTA_RICA_PROVINCES = [
+  'San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'
 ];
 
 const SUGGESTED_PLATFORMS = [
   { name: 'Google Maps', url: 'https://www.google.com/maps', icon: Globe },
-  { name: 'Mercado Libre', url: 'https://www.mercadolibre.com', icon: Building2 },
+  { name: 'Mercado Libre', url: 'https://www.mercadolibre.com.cr', icon: Building2 },
   { name: 'Facebook', url: 'https://www.facebook.com', icon: Globe },
   { name: 'CR Autos', url: 'https://www.crautos.com', icon: Building2 },
 ];
@@ -35,7 +37,7 @@ function App() {
   const [activeMode, setActiveMode] = useState<'search' | 'direct'>('search');
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('');
-  const [province, setProvince] = useState('');
+  const [province, setProvince] = useState('San José');
   const [targetUrl, setTargetUrl] = useState('');
   const [filters, setFilters] = useState({
     hasEmail: false,
@@ -46,11 +48,23 @@ function App() {
   const [leads, setLeads] = useState(MOCK_LEADS);
 
   const handleGenerate = () => {
+    if (leads.length > 10) setLeads([]); // Reset if too many for demo
     setIsGenerating(true);
-    // Future integration with n8n webhook
+
+    // Simulation logic to make buttons feel active
     setTimeout(() => {
+      const newLead = {
+        id: Date.now(),
+        company: query || (targetUrl ? new URL(targetUrl).hostname : 'Empresa Local'),
+        industry: query || 'Comercio',
+        email: `contacto@${(query || 'leads').toLowerCase().replace(/\s/g, '')}.cr`,
+        phone: `+506 ${Math.floor(Math.random() * 10000000) + 20000000}`,
+        confidence: Math.floor(Math.random() * 20) + 80,
+        status: Math.random() > 0.5 ? 'verified' : 'pending'
+      };
+      setLeads(prev => [newLead, ...prev]);
       setIsGenerating(false);
-    }, 3000);
+    }, 2000);
   };
 
   const downloadCSV = () => {
@@ -163,13 +177,15 @@ function App() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-semibold text-surface-700 mb-2">Provincia</label>
-                        <input
-                          type="text"
-                          placeholder="Eje: San José"
-                          className="w-full px-4 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all text-sm"
+                        <select
+                          className="w-full px-4 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all text-sm appearance-none cursor-pointer"
                           value={province}
                           onChange={(e) => setProvince(e.target.value)}
-                        />
+                        >
+                          {COSTA_RICA_PROVINCES.map(p => (
+                            <option key={p} value={p}>{p}</option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <label className="block text-sm font-semibold text-surface-700 mb-2">Ubicación</label>
@@ -187,15 +203,18 @@ function App() {
                   <div>
                     <label className="block text-sm font-semibold text-surface-700 mb-1.5">Plataformas Sugeridas</label>
                     <div className="flex flex-wrap gap-2 mb-4">
-                      {SUGGESTED_PLATFORMS.map((plat) => (
-                        <button
-                          key={plat.name}
-                          onClick={() => setTargetUrl(plat.url)}
-                          className={`px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all flex items-center gap-1 ${targetUrl === plat.url ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-surface-600 border-surface-200 hover:border-primary-300'}`}
-                        >
-                          <plat.icon className="w-3 h-3" /> {plat.name}
-                        </button>
-                      ))}
+                      {SUGGESTED_PLATFORMS.map((plat) => {
+                        const Icon = plat.icon;
+                        return (
+                          <button
+                            key={plat.name}
+                            onClick={() => setTargetUrl(plat.url)}
+                            className={`px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all flex items-center gap-1 ${targetUrl === plat.url ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-surface-600 border-surface-200 hover:border-primary-300'}`}
+                          >
+                            <Icon className="w-3 h-3" /> {plat.name}
+                          </button>
+                        );
+                      })}
                     </div>
                     <label className="block text-sm font-semibold text-surface-700 mb-2">URL del Sitio</label>
                     <input
