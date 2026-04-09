@@ -136,31 +136,44 @@ function App() {
     }
 
     if (isRealMode) {
-      addLog(`> CONECTANDO MOTORES REALES: Iniciando rastreo en n8n...`);
-      try {
-        const payload = activeMode === 'domain'
-          ? { domain: targetDomain }
-          : activeMode === 'asalariado'
-            ? { person: targetPersonName, cedula: targetPersonId }
-            : { query, province, layer: filters.sourceLayer, url: targetUrl };
+      const payload = activeMode === 'domain'
+        ? { domain: targetDomain }
+        : activeMode === 'asalariado'
+          ? { person: targetPersonName, cedula: targetPersonId }
+          : { query, province, layer: filters.sourceLayer, url: targetUrl };
 
+      try {
+        addLog(`> CONECTANDO MOTORES REALES: Iniciando rastreo en n8n...`);
         const response = await fetch('https://n8n.jazm.io/webhook/nexus-leads', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
           body: JSON.stringify(payload)
         });
+
+        if (!response.ok) {
+          throw new Error(`HTTP Error: ${response.status}`);
+        }
+
         const data: { leads?: Lead[] } = await response.json();
-        if (data.leads) {
+        if (data.leads && data.leads.length > 0) {
           setLeads(data.leads);
           setStats({
             total: data.leads.length,
             withEmail: data.leads.filter((l: Lead) => l.email).length,
             withPhone: data.leads.filter((l: Lead) => l.phone).length
           });
-          addLog(`[ÉXITO] Operación real completada.`);
+          addLog(`[ÉXITO] ${data.leads.length} leads extraídos desde n8n.`);
+        } else {
+          addLog(`[AVISO] n8n respondió pero no se encontraron leads.`);
+          setIsRealMode(false); // Auto-revert if no data found
         }
-      } catch (err) {
-        addLog(`[ERROR] Fallo en conexión con n8n.`);
+      } catch (err: any) {
+        addLog(`[ERROR CRÍTICO] Connection Refused / CORS Issue.`);
+        addLog(`> Tip: Asegúrate de que el webhook en n8n acepte peticiones POST desde este dominio.`);
+        console.error('n8n Error:', err);
       }
       setIsGenerating(false);
       return;
