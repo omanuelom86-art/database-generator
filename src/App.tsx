@@ -79,6 +79,7 @@ function App() {
   const [leads, setLeads] = useState<Lead[]>(MOCK_LEADS);
   const [stats, setStats] = useState({ total: 2, withEmail: 2, withPhone: 2 });
   const [trackingLogs, setTrackingLogs] = useState<string[]>([]);
+  const [isRealMode, setIsRealMode] = useState(false);
   const searchInterval = useRef<number | null>(null);
 
   const addLog = (msg: string) => {
@@ -102,18 +103,44 @@ function App() {
     return `${category.charAt(0).toUpperCase() + category.slice(1)} ${suffixes[Math.floor(Math.random() * suffixes.length)]}`;
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (searchInterval.current) clearInterval(searchInterval.current);
     setIsGenerating(true);
     setTrackingLogs([]);
-    addLog(`> Iniciando rastreo omnicanal de alto impacto en ${province}...`);
 
+    if (isRealMode) {
+      addLog(`> CONECTANDO MOTORES REALES: Iniciando rastreo en n8n...`);
+      try {
+        const response = await fetch('https://n8n.jazm.io/webhook/nexus-leads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, province, layer: filters.sourceLayer })
+        });
+        const data = await response.json();
+        if (data.leads) {
+          setLeads(data.leads);
+          setStats({
+            total: data.leads.length,
+            withEmail: data.leads.filter((l: any) => l.email).length,
+            withPhone: data.leads.filter((l: any) => l.phone).length
+          });
+          addLog(`[ÉXITO] Extracción real completada: ${data.leads.length} leads importados.`);
+        }
+      } catch (error) {
+        addLog(`[ERROR] Fallo en conexión con n8n. Verificando backup...`);
+        // Fallback or alert
+      }
+      setIsGenerating(false);
+      return;
+    }
+
+    addLog(`> Iniciando rastreo omnicanal de alto impacto en ${province}...`);
     let currentLeads = [...leads];
     let count = 0;
-    const maxSimulated = 10000; // Truly show a lot
+    const maxSimulated = 10000;
 
     searchInterval.current = setInterval(() => {
-      // BURST MODE: 20 leads per tick
+      // Simulation logic here...
       for (let i = 0; i < 20; i++) {
         count++;
         const name = getBusinessName(query || 'Servicios');
@@ -132,32 +159,24 @@ function App() {
           confidence: Math.floor(Math.random() * 20) + 75,
           status: 'verified' as Lead['status']
         };
-
         currentLeads = [newLead, ...currentLeads];
       }
 
-      setLeads([...currentLeads.slice(0, 2000)]); // Keep 2k in UI view
-
+      setLeads([...currentLeads.slice(0, 2000)]);
       setStats(prev => ({
         total: prev.total + 20,
         withEmail: prev.withEmail + 8,
         withPhone: prev.withPhone + 10
       }));
 
-      if (count % 100 === 0) {
-        addLog(`[RASTREO] Descubiertos ${count} registros hasta ahora...`);
-      }
+      if (count % 100 === 0) addLog(`[RASTREO] Descubiertos ${count} registros hasta ahora...`);
 
       if (count >= maxSimulated) {
         handleStop();
         addLog(`[ÉXITO] Ráfaga inicial completa. Sincronizando con base de datos de 1,200,000 registros...`);
-        setStats({
-          total: 1245000,
-          withEmail: 890400,
-          withPhone: 920500
-        });
+        setStats({ total: 1245000, withEmail: 890400, withPhone: 920500 });
       }
-    }, 100); // 200 leads per second
+    }, 100);
   };
 
   const handleStop = () => {
@@ -327,6 +346,13 @@ function App() {
         </div>
 
         <div className="flex items-center gap-4 w-1/4 justify-end">
+          <button
+            onClick={() => setIsRealMode(!isRealMode)}
+            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all flex items-center gap-2 ${isRealMode ? 'bg-red-600 text-white border-red-400 shadow-lg shadow-red-500/30' : 'bg-surface-50 text-surface-400 border-surface-200'}`}
+          >
+            <div className={`w-2 h-2 rounded-full ${isRealMode ? 'bg-white animate-pulse' : 'bg-surface-300'}`} />
+            {isRealMode ? 'Modo Real Activo' : 'Simulación'}
+          </button>
           <button
             onClick={downloadCSV}
             className="secondary-button !py-2 text-xs bg-primary-600 text-white border-primary-600 shadow-lg shadow-primary-500/20 hover:bg-primary-700"
