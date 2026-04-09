@@ -33,12 +33,20 @@ const SUGGESTED_PLATFORMS = [
   { name: 'CR Autos', url: 'https://www.crautos.com', icon: Building2 },
 ];
 
+const PROFESSIONAL_COLLEGES = [
+  { name: 'Colegio de Abogados', url: 'https://www.abogados.or.cr' },
+  { name: 'Colegio de Médicos', url: 'https://www.medicos.cr' },
+  { name: 'CFIA (Ingenieros)', url: 'https://www.cfia.or.cr' },
+  { name: 'C. Económicas', url: 'https://cpcecr.com' },
+];
+
 function App() {
   const [activeMode, setActiveMode] = useState<'search' | 'direct'>('search');
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('');
   const [province, setProvince] = useState('San José');
   const [targetUrl, setTargetUrl] = useState('');
+  const [showLegalWarning, setShowLegalWarning] = useState(false);
   const [filters, setFilters] = useState({
     hasEmail: false,
     hasWhatsapp: false,
@@ -133,6 +141,57 @@ function App() {
 
   return (
     <div className="min-h-screen bg-surface-50">
+      {/* Legal Overlay Modal */}
+      <AnimatePresence>
+        {showLegalWarning && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 text-center"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="bg-white rounded-[32px] p-10 max-w-xl shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-red-500 to-orange-500" />
+              <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-6" />
+              <h3 className="text-2xl font-bold text-surface-900 mb-4">Aviso de Cumplimiento Legal</h3>
+              <div className="text-surface-600 text-sm leading-relaxed space-y-4 mb-8 text-left">
+                <p>
+                  Estás a punto de extraer datos de <span className="font-bold text-surface-900">Colegios Profesionales de Costa Rica</span>.
+                  Según la <span className="font-bold">Ley No. 8968 (Ley de Protección de la Persona frente al Tratamiento de sus Datos Personales)</span>:
+                </p>
+                <div className="pl-4 border-l-2 border-primary-100 italic">
+                  "El uso de bases de datos de acceso público para fines distintos a la verificación profesional o informativa, como el envío masivo de publicidad no solicitada (Spam), puede ser sancionado por la PRODHAB."
+                </div>
+                <p>
+                  Al continuar, confirmas que utilizarás esta información bajo los principios de <span className="font-bold text-green-600">Consentimiento y Finalidad</span>, respetando los derechos de los titulares.
+                </p>
+              </div>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setShowLegalWarning(false)}
+                  className="secondary-button flex-1 justify-center"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    setShowLegalWarning(false);
+                    handleGenerate();
+                  }}
+                  className="primary-button flex-1 justify-center bg-red-600 hover:bg-red-700 border-red-600 shadow-red-500/20"
+                >
+                  Entiendo y Acepto
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Premium Header */}
       <header className="glass-header px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -233,6 +292,25 @@ function App() {
                         />
                       </div>
                     </div>
+
+                    <div className="pt-2">
+                      <label className="block text-[10px] font-bold text-surface-400 uppercase tracking-widest mb-3">Colegios Profesionales</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {PROFESSIONAL_COLLEGES.map(college => (
+                          <button
+                            key={college.name}
+                            onClick={() => {
+                              setQuery(college.name);
+                              setTargetUrl(college.url);
+                              setActiveMode('search');
+                            }}
+                            className={`px-3 py-2 rounded-xl text-[10px] font-bold border transition-all truncate text-left flex items-center gap-1.5 ${query === college.name ? 'bg-primary-50 border-primary-200 text-primary-700' : 'bg-white border-surface-100 text-surface-500 hover:border-surface-200'}`}
+                          >
+                            <Shield className="w-3 h-3 text-primary-400" /> {college.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </>
                 ) : (
                   <div>
@@ -324,7 +402,13 @@ function App() {
 
                 <div className="pt-4">
                   <button
-                    onClick={handleGenerate}
+                    onClick={() => {
+                      if (query.toLowerCase().includes('colegio')) {
+                        setShowLegalWarning(true);
+                      } else {
+                        handleGenerate();
+                      }
+                    }}
                     disabled={isGenerating || (activeMode === 'search' ? !query : !targetUrl)}
                     className="primary-button w-full justify-center disabled:opacity-50 disabled:grayscale"
                     title="Iniciar proceso de extracción"
