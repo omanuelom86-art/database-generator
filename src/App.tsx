@@ -166,7 +166,7 @@ function App() {
       addLog(`[DEBUG] Enviando parámetros: ${JSON.stringify(payload)}`);
 
       const performN8NRequest = async (mode: 'standard' | 'simple' | 'proxy') => {
-        let url = 'https://n8n.jazm.io/webhook/nexus-leads';
+        let url = 'https://n8n-production-c420.up.railway.app/webhook/nexus-leads';
         const options: RequestInit = {
           method: 'POST',
           body: JSON.stringify(payload)
