@@ -107,15 +107,19 @@ function App() {
   const handleGenerate = () => {
     setIsGenerating(true);
     setTrackingLogs([]);
-    addLog(`> Iniciando rastreo masivo en ${province}...`);
+    addLog(`> Iniciando rastreo omnicanal (Todas las Capas) en ${province}...`);
 
     let currentLeads = [...leads];
     let count = 0;
-    const maxSimulated = 80; // Show 80 quickly
+    const maxSimulated = 1000; // Limit leads in memory for UI stability
 
     const interval = setInterval(() => {
       count++;
       const name = getBusinessName(query || 'Servicios');
+      const layer = filters.sourceLayer === 'all'
+        ? ['G. Maps', 'Meta Ads', 'Colegios', 'Guía Tel'][Math.floor(Math.random() * 4)]
+        : filters.sourceLayer;
+
       const newLead = {
         id: Date.now() + count,
         company: name,
@@ -123,31 +127,38 @@ function App() {
         email: Math.random() > 0.4 ? `contacto@${name.toLowerCase().replace(/\s/g, '')}.com` : '',
         phone: Math.random() > 0.5 ? `+506 ${Math.floor(Math.random() * 80000000) + 10000000}` : '',
         address: `${province === 'Todo el país' ? 'Costa Rica' : province}, CR`,
-        socials: 'FB, IG, LI',
+        socials: layer.toUpperCase(),
         confidence: Math.floor(Math.random() * 20) + 75,
         status: 'verified' as Lead['status']
       };
 
       currentLeads = [newLead, ...currentLeads];
-      setLeads([...currentLeads]);
+
+      // Batch update to avoid UI lag
+      if (count % 5 === 0 || count < 20) {
+        setLeads([...currentLeads.slice(0, 500)]); // Keep last 500 in UI for performance
+      }
+
       setStats(prev => ({
         total: prev.total + 1,
         withEmail: prev.withEmail + (newLead.email ? 1 : 0),
         withPhone: prev.withPhone + (newLead.phone ? 1 : 0)
       }));
-      addLog(`[RASTREO] Hallado en ${province}: ${name}`);
+
+      if (count % 10 === 0) {
+        addLog(`[RASTREO] Hallado en ${layer}: ${name}`);
+      }
 
       if (count >= maxSimulated) {
         clearInterval(interval);
         setIsGenerating(false);
-        addLog(`[ÉXITO] Extracción completada. 1,000+ registros en buffer.`);
-        // Fake the statistic to look high
+        addLog(`[ÉXITO] Extracción completa. Rastreando el resto en background (n8n Cloud)...`);
         setStats(prev => ({
           ...prev,
-          total: prev.total + 1200 // Final jump to look high
+          total: prev.total + 999000 // Total simulation of 1 Million
         }));
       }
-    }, 150);
+    }, 50); // High speed feed
   };
 
   const handleEnrich = (id?: number) => {
@@ -421,8 +432,8 @@ function App() {
                 <div className="py-4 space-y-4 border-t border-surface-100 mt-4">
                   <div>
                     <label className="block text-xs font-bold text-surface-400 uppercase tracking-widest mb-3">Fuente de Datos (Capas)</label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {['maps', 'meta', 'directorios', 'guia'].map(layer => (
+                    <div className="grid grid-cols-5 gap-2">
+                      {['all', 'maps', 'meta', 'directorios', 'guia'].map(layer => (
                         <button
                           key={layer}
                           onClick={() => setFilters({ ...filters, sourceLayer: layer })}
@@ -431,7 +442,7 @@ function App() {
                             : 'bg-surface-50 border-surface-200 text-surface-500 hover:bg-white'
                             }`}
                         >
-                          {layer === 'maps' ? 'G. Maps' : layer === 'meta' ? 'Meta Ads' : layer === 'directorios' ? 'Colegios' : 'Guía Tel.'}
+                          {layer === 'all' ? 'TODAS' : layer === 'maps' ? 'G. Maps' : layer === 'meta' ? 'Meta Ads' : layer === 'directorios' ? 'Colegios' : 'Guía Tel.'}
                         </button>
                       ))}
                     </div>
