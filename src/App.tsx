@@ -86,6 +86,24 @@ function App() {
   ]);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPass, setLoginPass] = useState('');
+
+  // n8n Expert: Persistencia de Sesión
+  useEffect(() => {
+    const savedUser = localStorage.getItem('nexus_user');
+    if (savedUser) {
+      setCurrentUser(JSON.parse(savedUser));
+      setView('app');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('nexus_user', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('nexus_user');
+    }
+  }, [currentUser]);
+
   const [activeMode, setActiveMode] = useState<'search' | 'direct' | 'domain' | 'asalariado'>('search');
   const [query, setQuery] = useState('');
   const [targetUrl, setTargetUrl] = useState('');
@@ -143,18 +161,23 @@ function App() {
           : { query, province, layer: filters.sourceLayer, url: targetUrl };
 
       try {
-        addLog(`> CONECTANDO MOTORES REALES: Iniciando rastreo en n8n...`);
+        addLog(`> CONECTANDO MOTORES REALES: Enviando payload a n8n...`);
         const response = await fetch('https://n8n.jazm.io/webhook/nexus-leads', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'X-Nexus-Source': 'v110.50'
           },
           body: JSON.stringify(payload)
         });
 
+        if (response.status === 404) {
+          throw new Error('Endpoint no encontrado (404). Revisa la URL en n8n.');
+        }
+
         if (!response.ok) {
-          throw new Error(`HTTP Error: ${response.status}`);
+          throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
         }
 
         const data: { leads?: Lead[] } = await response.json();
@@ -165,15 +188,19 @@ function App() {
             withEmail: data.leads.filter((l: Lead) => l.email).length,
             withPhone: data.leads.filter((l: Lead) => l.phone).length
           });
-          addLog(`[ÉXITO] ${data.leads.length} leads extraídos desde n8n.`);
+          addLog(`[ÉXITO] n8n retornó ${data.leads.length} registros válidos.`);
         } else {
-          addLog(`[AVISO] n8n respondió pero no se encontraron leads.`);
-          setIsRealMode(false); // Auto-revert if no data found
+          addLog(`[CONEXIÓN OK] n8n respondió vacío. Verifica tus filtros o credenciales en el motor.`);
+          // Not auto-reverting so user can see it works but is empty
         }
       } catch (err: any) {
-        addLog(`[ERROR CRÍTICO] Connection Refused / CORS Issue.`);
-        addLog(`> Tip: Asegúrate de que el webhook en n8n acepte peticiones POST desde este dominio.`);
-        console.error('n8n Error:', err);
+        if (err.message.includes('Failed to fetch')) {
+          addLog(`[ERROR DE SEGURIDAD] Bloqueo de CORS detectado.`);
+          addLog(`> N8N EXPERT TIP: Activa "Allowed Origins: *" en el nodo Webhook o configura N8N_CORS_ALLOWED_ORIGINS.`);
+        } else {
+          addLog(`[DETECCIÓN DE FALLA] ${err.message}`);
+        }
+        console.error('Diagnostic n8n result:', err);
       }
       setIsGenerating(false);
       return;
@@ -397,15 +424,22 @@ function App() {
             <Unlock className="w-10 h-10 text-amber-600 hidden group-hover:block" />
           </div>
           <h2 className="text-2xl font-bold text-surface-800">Solicitud Recibida</h2>
-          <p className="text-surface-500 leading-relaxed font-medium">
-            ¡Hola! Tu perfil está en manos del **Super Administrador**. <br />
+          <p className="text-surface-500 leading-relaxed font-bold text-sm">
+            ¡Hola! Tu perfil está en manos del **Super Administrador de Jazm.io**.
+          </p>
+          <p className="text-surface-400 text-xs leading-relaxed">
             Recibirás un mensaje de aprobación inmediata en tu WhatsApp una vez que validemos tu licencia de Nexus AI.
           </p>
-          <div className="pt-6">
-            <button onClick={() => setView('auth')} className="text-primary-600 font-bold hover:underline flex items-center gap-2 mx-auto">
-              <LogOut className="w-4 h-4" /> Volver al Inicio
-            </button>
-          </div>
+
+          <button
+            onClick={() => {
+              setCurrentUser(null);
+              setView('auth');
+            }}
+            className="w-full py-4 text-primary-600 font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:bg-primary-50 rounded-2xl transition-all border border-transparent hover:border-primary-100"
+          >
+            <ChevronRight className="w-3.5 h-3.5 rotate-180" /> Volver al Inicio de Sesión
+          </button>
         </motion.div>
       </div>
     );
