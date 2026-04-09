@@ -168,23 +168,39 @@ function App() {
           ? { person: targetPersonName, cedula: targetPersonId }
           : { query, province, layer: filters.sourceLayer, url: targetUrl };
 
-      const performN8NRequest = async (useSimpleMode = false) => {
-        const headers: any = useSimpleMode
-          ? { 'Content-Type': 'text/plain' }
-          : { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Nexus-Source': 'v110.50' };
-
-        if (useSimpleMode) addLog(`[MODO SIMPLE] Re-intentando sin Preflight...`);
-
-        const response = await fetch('https://n8n.jazm.io/webhook/nexus-leads', {
+      const performN8NRequest = async (mode: 'standard' | 'simple' | 'proxy') => {
+        let url = 'https://n8n.jazm.io/webhook/nexus-leads';
+        let options: RequestInit = {
           method: 'POST',
-          headers,
           body: JSON.stringify(payload)
-        });
+        };
 
-        if (response.status === 404) throw new Error('Endpoint no encontrado (404).');
-        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+        if (mode === 'standard') {
+          addLog(`[STANDARD] Intentando conexión segura (JSON)...`);
+          options.headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        } else if (mode === 'simple') {
+          addLog(`[SIMPLE] Bypass de Preflight (CORS Skip)...`);
+          options.headers = { 'Content-Type': 'text/plain' };
+        } else if (mode === 'proxy') {
+          addLog(`[PROXY] Usando Túnel de Emergencia (AllOrigins)...`);
+          url = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}&callback=?`; // Callback trick for CORS
+          // AllOrigins proxy handles the request
+        }
 
-        const data = await response.json();
+        const response = await fetch(url, options);
+        if (!response.ok && mode !== 'proxy') throw new Error(`HTTP ${response.status}`);
+
+        let data;
+        if (mode === 'proxy') {
+          const proxyResult = await response.text();
+          // Extract JSON from callback or raw
+          const jsonStr = proxyResult.substring(proxyResult.indexOf('({') + 1, proxyResult.lastIndexOf('})') + 1);
+          const proxyData = JSON.parse(jsonStr);
+          data = JSON.parse(proxyData.contents);
+        } else {
+          data = await response.json();
+        }
+
         if (data.leads && data.leads.length > 0) {
           setLeads(data.leads);
           setStats({
@@ -192,28 +208,25 @@ function App() {
             withEmail: data.leads.filter((l: Lead) => l.email).length,
             withPhone: data.leads.filter((l: Lead) => l.phone).length
           });
-          addLog(`[ÉXITO] n8n retornó ${data.leads.length} registros.`);
+          addLog(`[ÉXITO] ${data.leads.length} leads recibidos vía ${mode.toUpperCase()}.`);
         } else {
-          addLog(`[CONEXIÓN OK] n8n respondió sin datos. Revisa tus filtros.`);
+          addLog(`[INFO] Conectado vía ${mode}, pero n8n no retornó leads.`);
         }
       };
 
       try {
-        addLog(`> CONECTANDO MOTORES REALES: Enviando payload...`);
-        await performN8NRequest(false);
-      } catch (err: any) {
-        if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
+        await performN8NRequest('standard');
+      } catch (e1) {
+        try {
+          await performN8NRequest('simple');
+        } catch (e2) {
           try {
-            await performN8NRequest(true); // Retry in Simple Mode
-          } catch (_retryErr: any) {
-            addLog(`[ERROR DE SEGURIDAD] Bloqueo persistente de CORS / Red.`);
-            addLog(`> DIAGNÓSTICO: Tu servidor n8n RECHAZÓ la conexión.`);
-            addLog(`> SOLUCIÓN: En n8n, activa "Allowed Origins: *" en el nodo Webhook.`);
+            await performN8NRequest('proxy');
+          } catch (e3) {
+            addLog(`[FALLO TOTAL] n8n sigue inaccesible.`);
+            addLog(`> SOLUCIÓN FINAL: Revisa que tu servidor n8n sea ACCESIBLE desde internet.`);
           }
-        } else {
-          addLog(`[DETECCIÓN DE FALLA] ${err.message}`);
         }
-        console.error('Expert Diagnostic:', err);
       }
       setIsGenerating(false);
       return;
