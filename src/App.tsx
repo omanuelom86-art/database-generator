@@ -56,6 +56,11 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [leads, setLeads] = useState(MOCK_LEADS);
   const [stats, setStats] = useState({ total: 2, withEmail: 2, withPhone: 2 });
+  const [trackingLogs, setTrackingLogs] = useState<string[]>([]);
+
+  const addLog = (msg: string) => {
+    setTrackingLogs(prev => [msg, ...prev].slice(0, 5));
+  };
 
   const getBusinessName = (category: string) => {
     const cat = category.toLowerCase();
@@ -80,6 +85,13 @@ function App() {
 
   const handleGenerate = () => {
     setIsGenerating(true);
+    setTrackingLogs([]);
+    addLog(`> Iniciando rastreo en ${province}...`);
+
+    setTimeout(() => addLog(`> Conectando con Motor de Mapas CR...`), 500);
+    setTimeout(() => addLog(`> Filtrando por: ${query || 'General'}...`), 1000);
+    setTimeout(() => addLog(`> IA: Identificando negocios relacionados...`), 1500);
+
     setTimeout(() => {
       const name = getBusinessName(query || 'Servicios');
       const newLead = {
@@ -101,10 +113,12 @@ function App() {
         withPhone: updatedLeads.filter(l => l.phone).length
       });
       setIsGenerating(false);
-    }, 2000);
+      addLog(`[ÉXITO] Lead hallado: ${name}`);
+    }, 2500);
   };
 
   const handleEnrich = (id?: number) => {
+    addLog(`> IA: Buscando datos faltantes en redes sociales...`);
     const enrichLead = (lead: any) => {
       if (!lead.email || !lead.phone || !lead.address) {
         return {
@@ -127,6 +141,7 @@ function App() {
       withEmail: newLeads.filter(l => l.email).length,
       withPhone: newLeads.filter(l => l.phone).length
     });
+    setTimeout(() => addLog(`[ÉXITO] Base de datos enriquecida`), 500);
   };
 
   const downloadCSV = () => {
@@ -240,11 +255,11 @@ function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-8 py-10">
+      <main className="max-w-[1920px] mx-auto px-4 lg:px-10 py-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+          className="grid grid-cols-1 lg:grid-cols-4 gap-10"
         >
           {/* Search Configuration Panel */}
           <section className="lg:col-span-1 space-y-6">
@@ -436,19 +451,41 @@ function App() {
                     title="Iniciar proceso de extracción"
                   >
                     {isGenerating ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                      <span className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         Extrayendo...
-                      </>
+                      </span>
                     ) : (
-                      <>
-                        <Plus className="w-5 h-5" />
+                      <span className="flex items-center gap-2">
+                        <Plus size={18} />
                         Iniciar Extracción
-                      </>
+                      </span>
                     )}
                   </button>
                 </div>
               </div>
+
+              {/* AI Tracking Console */}
+              {trackingLogs.length > 0 && (
+                <div className="glass-card p-4 space-y-3 border-cyan-500/30">
+                  <div className="flex items-center gap-2 text-cyan-400 font-bold text-xs uppercase tracking-widest">
+                    <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                    Consola de Rastreo IA
+                  </div>
+                  <div className="space-y-1 overflow-hidden">
+                    {trackingLogs.map((log, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className={`text-[11px] font-mono ${log.startsWith('[ÉXITO]') ? 'text-green-400' : 'text-gray-400'}`}
+                      >
+                        {log}
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Progress Counters */}
               <div className="mt-8 grid grid-cols-3 gap-2 py-4 border-y border-surface-100">
