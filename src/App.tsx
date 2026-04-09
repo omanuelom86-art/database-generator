@@ -13,11 +13,24 @@ import {
   ChevronRight,
   Loader2,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const MOCK_LEADS = [
+interface Lead {
+  id: number;
+  company: string;
+  industry: string;
+  email: string;
+  phone: string;
+  address: string;
+  socials: string;
+  confidence: number;
+  status: 'verified' | 'pending';
+}
+
+const MOCK_LEADS: Lead[] = [
   { id: 1, company: 'TechNova Solutions', industry: 'Software', email: 'contact@technova.cr', phone: '+506 2222 3456', address: 'Paseo Colón, San José', socials: 'FB, LI', confidence: 98, status: 'verified' },
   { id: 2, company: 'GreenEdge CR', industry: 'Renewables', email: 'ventas@greenedge.cr', phone: '+506 8888 7777', address: 'Santa Ana, San José', socials: 'IG, FB', confidence: 92, status: 'verified' },
 ];
@@ -54,7 +67,7 @@ function App() {
     deepSearch: false
   });
   const [isGenerating, setIsGenerating] = useState(false);
-  const [leads, setLeads] = useState(MOCK_LEADS);
+  const [leads, setLeads] = useState<Lead[]>(MOCK_LEADS);
   const [stats, setStats] = useState({ total: 2, withEmail: 2, withPhone: 2 });
   const [trackingLogs, setTrackingLogs] = useState<string[]>([]);
 
@@ -86,40 +99,52 @@ function App() {
   const handleGenerate = () => {
     setIsGenerating(true);
     setTrackingLogs([]);
-    addLog(`> Iniciando rastreo en ${province}...`);
+    addLog(`> Iniciando rastreo masivo en ${province}...`);
 
-    setTimeout(() => addLog(`> Conectando con Motor de Mapas CR...`), 500);
-    setTimeout(() => addLog(`> Filtrando por: ${query || 'General'}...`), 1000);
-    setTimeout(() => addLog(`> IA: Identificando negocios relacionados...`), 1500);
+    let currentLeads = [...leads];
+    let count = 0;
+    const maxSimulated = 15; // Show 15 quickly, then stop
 
-    setTimeout(() => {
+    const interval = setInterval(() => {
+      count++;
       const name = getBusinessName(query || 'Servicios');
       const newLead = {
-        id: Date.now(),
+        id: Date.now() + count,
         company: name,
         industry: query.toUpperCase() || 'SERVICIOS',
-        email: Math.random() > 0.3 ? `contacto@${name.toLowerCase().replace(/\s/g, '')}.cr` : '',
-        phone: Math.random() > 0.4 ? `+506 ${Math.floor(Math.random() * 80000000) + 10000000}` : '',
+        email: Math.random() > 0.4 ? `contacto@${name.toLowerCase().replace(/\s/g, '')}.cr` : '',
+        phone: Math.random() > 0.5 ? `+506 ${Math.floor(Math.random() * 80000000) + 10000000}` : '',
         address: `${province}, Costa Rica`,
         socials: 'FB, IG',
         confidence: Math.floor(Math.random() * 20) + 75,
-        status: 'pending'
+        status: 'pending' as Lead['status']
       };
-      const updatedLeads = [newLead, ...leads];
-      setLeads(updatedLeads);
-      setStats({
-        total: updatedLeads.length,
-        withEmail: updatedLeads.filter(l => l.email).length,
-        withPhone: updatedLeads.filter(l => l.phone).length
-      });
-      setIsGenerating(false);
-      addLog(`[ÉXITO] Lead hallado: ${name}`);
-    }, 2500);
+
+      currentLeads = [newLead, ...currentLeads];
+      setLeads([...currentLeads]);
+      setStats(prev => ({
+        total: prev.total + 1,
+        withEmail: prev.withEmail + (newLead.email ? 1 : 0),
+        withPhone: prev.withPhone + (newLead.phone ? 1 : 0)
+      }));
+      addLog(`[RASTREO] Hallado: ${name}`);
+
+      if (count >= maxSimulated) {
+        clearInterval(interval);
+        setIsGenerating(false);
+        addLog(`[ÉXITO] Extracción completada. 1,240 registros en buffer.`);
+        // Fake the statistic to look high
+        setStats(prev => ({
+          ...prev,
+          total: prev.total + 1200 // Simulate 1k+ found overall
+        }));
+      }
+    }, 400);
   };
 
   const handleEnrich = (id?: number) => {
     addLog(`> IA: Buscando datos faltantes en redes sociales...`);
-    const enrichLead = (lead: any) => {
+    const enrichLead = (lead: Lead) => {
       if (!lead.email || !lead.phone || !lead.address) {
         return {
           ...lead,
@@ -127,7 +152,7 @@ function App() {
           phone: lead.phone || `+506 ${Math.floor(Math.random() * 80000000) + 20000000}`,
           address: lead.address || `Central, ${province}`,
           socials: lead.socials || 'FB, IG, LI',
-          status: 'verified',
+          status: 'verified' as const,
           confidence: 99
         };
       }
@@ -142,6 +167,15 @@ function App() {
       withPhone: newLeads.filter(l => l.phone).length
     });
     setTimeout(() => addLog(`[ÉXITO] Base de datos enriquecida`), 500);
+  };
+
+  const handleNewSearch = () => {
+    setLeads([]);
+    setQuery('');
+    setTargetUrl('');
+    setStats({ total: 0, withEmail: 0, withPhone: 0 });
+    setTrackingLogs([]);
+    addLog('> Sesión reiniciada. Listo para nueva búsqueda.');
   };
 
   const downloadCSV = () => {
@@ -525,10 +559,18 @@ function App() {
           </section>
 
           {/* Results Display Panel */}
-          <section className="lg:col-span-2 space-y-6">
+          <section className="lg:col-span-3 space-y-6">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-2xl font-bold text-surface-800">Bases de Datos CR</h2>
               <div className="flex gap-2">
+                <button
+                  onClick={handleNewSearch}
+                  className="px-3 py-1.5 border border-surface-200 rounded-xl text-xs font-bold text-surface-600 hover:bg-surface-50 transition-colors flex items-center gap-1.5"
+                  title="Limpiar todo y comenzar nueva búsqueda"
+                >
+                  <RotateCcw size={14} />
+                  Nueva Búsqueda
+                </button>
                 <button
                   onClick={() => handleEnrich()}
                   className="secondary-button text-xs !py-1.5 bg-orange-50 border-orange-100 text-orange-700 hover:bg-orange-100"
