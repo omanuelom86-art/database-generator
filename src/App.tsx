@@ -25,8 +25,10 @@ const MOCK_LEADS = [
 ];
 
 function App() {
+  const [activeMode, setActiveMode] = useState<'search' | 'direct'>('search');
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('');
+  const [targetUrl, setTargetUrl] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [leads] = useState(MOCK_LEADS);
 
@@ -74,38 +76,79 @@ function App() {
         >
           {/* Search Configuration Panel */}
           <section className="lg:col-span-1 space-y-6">
+            <div className="quantum-card p-2 flex gap-1 mb-0 rounded-2xl mx-8 bg-surface-100/50 border-none shadow-none">
+              <button
+                onClick={() => setActiveMode('search')}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${activeMode === 'search' ? 'bg-white shadow-sm text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
+              >
+                Búsqueda
+              </button>
+              <button
+                onClick={() => setActiveMode('direct')}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${activeMode === 'direct' ? 'bg-white shadow-sm text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
+              >
+                Link Directo
+              </button>
+            </div>
+
             <div className="quantum-card p-8">
               <h2 className="text-lg font-bold mb-6 flex items-center gap-2">
-                <Search className="w-5 h-5 text-primary-600" /> Configuración de Búsqueda
+                {activeMode === 'search' ? (
+                  <>
+                    <Search className="w-5 h-5 text-primary-600" /> Configuración de Búsqueda
+                  </>
+                ) : (
+                  <>
+                    <Globe className="w-5 h-5 text-primary-600" /> Scraping de URL Directa
+                  </>
+                )}
               </h2>
 
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-surface-700 mb-2">Público Objetivo</label>
-                  <input
-                    type="text"
-                    placeholder="Eje: Agencias de Marketing, Restaurantes..."
-                    className="w-full px-5 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
-                </div>
+                {activeMode === 'search' ? (
+                  <>
+                    <div>
+                      <label className="block text-sm font-semibold text-surface-700 mb-2">Público Objetivo</label>
+                      <input
+                        type="text"
+                        placeholder="Eje: Agencias de Marketing, Restaurantes..."
+                        className="w-full px-5 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-surface-700 mb-2">Ubicación</label>
-                  <input
-                    type="text"
-                    placeholder="Eje: España, Madrid o Madrid + 50km"
-                    className="w-full px-5 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                  />
-                </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-surface-700 mb-2">Ubicación</label>
+                      <input
+                        type="text"
+                        placeholder="Eje: España, Madrid o Madrid + 50km"
+                        className="w-full px-5 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-semibold text-surface-700 mb-2">URL del Sitio (Eje: Mercado Libre, FB, Maps...)</label>
+                    <input
+                      type="url"
+                      placeholder="https://www.ejemplo.com/busqueda-leads"
+                      className="w-full px-5 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm"
+                      value={targetUrl}
+                      onChange={(e) => setTargetUrl(e.target.value)}
+                    />
+                    <p className="mt-2 text-[10px] text-surface-400 font-medium">
+                      ADVERTENCIA: Algunos sitios requieren el uso de proxies. n8n intentará extraer datos públicos de forma ética.
+                    </p>
+                  </div>
+                )}
 
                 <div className="pt-4">
                   <button
                     onClick={handleGenerate}
-                    disabled={isGenerating || !query}
+                    disabled={isGenerating || (activeMode === 'search' ? !query : !targetUrl)}
                     className="primary-button w-full justify-center disabled:opacity-50 disabled:grayscale"
                   >
                     {isGenerating ? (
