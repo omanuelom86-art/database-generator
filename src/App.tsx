@@ -41,9 +41,22 @@ const COSTA_RICA_PROVINCES = [
 ];
 
 const INDUSTRY_CATEGORIES = [
-  'Restaurantes', 'Bufetes de Abogados', 'Ferreterías', 'Talleres Mecánicos',
-  'Clínicas Médicas', 'Salones de Belleza', 'Bienes Raíces', 'Hoteles',
-  'Servicios de Transporte', 'Software & Tech', 'Importaciones', 'Salud'
+  // Sector A: Agro & Ganadería
+  'Cafetaleras', 'Bananeras', 'Floristerías Mayoristas', 'Hortalizas', 'Lecherías', 'Veterinarias Rurales', 'Maquinaria Agrícola',
+  // Sector B-F: Industria & Construcción
+  'Fábricas de Alimentos', 'Textileras', 'Plantas de Plástico', 'Metalmecánica', 'Desarrolladoras Inmobiliarias', 'Constructoras', 'Contratistas Eléctricos', 'Ferreterías Industriales',
+  // Sector G: Comercio
+  'Venta de Autos', 'Repuestos Automotrices', 'Talleres Mecánicos', 'Llanteras', 'Distribuidoras de Químicos', 'Supermercados', 'Tiendas de Ropa', 'Librerías', 'Electrodomésticos',
+  // Sector I: Turísmo & Gastronomía
+  'Hoteles', 'Hostales', 'Airbnb Comerciales', 'Restaurantes', 'Sodas', 'Cafeterías', 'Bares', 'Catering Service', 'Food Trucks', 'Pizzerías', 'Sushis',
+  // Sector J: Tecnología & Medios
+  'Software Factory', 'Consultoría IT', 'Agencias de Marketing', 'Radiodifusoras', 'Productoras de Video', 'Periódicos Digitales',
+  // Sector M: Profesionales
+  'Bufetes de Abogados', 'Notarios', 'Auditores', 'Contadores Públicos', 'Asesores Fiscales', 'Firmas de Arquitectura', 'Topógrafos', 'Agencias de Publicidad',
+  // Sector P-S: Salud & Educación
+  'Escuelas Privadas', 'Centros de Idiomas', 'Universidades', 'Clínicas Privadas', 'Consultorios Dentales', 'Centros de Estética', 'Farmacias', 'Gimnasios', 'Salones de Belleza', 'Funerarias',
+  // Sector K-L: Finanzas
+  'Bancos', 'Cooperativas de Ahorro', 'Casas de Cambio', 'Bienes Raíces', 'Administradoras de Condominios'
 ];
 
 const SUGGESTED_PLATFORMS = [
@@ -61,10 +74,12 @@ const PROFESSIONAL_COLLEGES = [
 ];
 
 function App() {
-  const [activeMode, setActiveMode] = useState<'search' | 'direct' | 'domain'>('search');
+  const [activeMode, setActiveMode] = useState<'search' | 'direct' | 'domain' | 'asalariado'>('search');
   const [query, setQuery] = useState('');
   const [targetUrl, setTargetUrl] = useState('');
   const [targetDomain, setTargetDomain] = useState('');
+  const [targetPersonName, setTargetPersonName] = useState('');
+  const [targetPersonId, setTargetPersonId] = useState('');
   const [province, setProvince] = useState(COSTA_RICA_PROVINCES[0]);
   const [showLegalWarning, setShowLegalWarning] = useState(false);
   const [filters, setFilters] = useState({
@@ -88,20 +103,13 @@ function App() {
   };
 
   const getBusinessName = (category: string) => {
-    const suffixes = ['Consultores', 'S.A.', 'Grupó', 'CR', 'Asesores', 'Logística'];
-    if (filters.sourceLayer === 'gobierno') {
-      const govPrefixes = ['Proveedor', 'Contribuyente', 'Patente', 'Pyme', 'Exportador'];
-      return `${govPrefixes[Math.floor(Math.random() * govPrefixes.length)]} - ${category.toUpperCase()} ${Math.floor(Math.random() * 900) + 100}`;
-    }
-    if (category.toLowerCase() === 'restaurante') {
-      const names = ['La Casona', 'El Fogón', 'Gallo Pinto Express', 'Soda Tapia', 'Sabor Tico'];
-      return names[Math.floor(Math.random() * names.length)] + ' ' + suffixes[Math.floor(Math.random() * suffixes.length)];
-    }
-    if (category.toLowerCase() === 'taller') {
-      const names = ['Los Gemelos', 'San Judas', 'Automotriz J&M', 'El Rápido'];
-      return `Taller ${names[Math.floor(Math.random() * names.length)]}`;
-    }
-    return `${category.charAt(0).toUpperCase() + category.slice(1)} ${suffixes[Math.floor(Math.random() * suffixes.length)]}`;
+    const prefixes = ['Corporación', 'Grupo', 'Inversiones', 'Servicios', 'Centro', 'Soluciones', 'Agencia', 'Firma'];
+    const suffixes = ['CR', 'Nacional', 'Central', 'Occidente', 'del Norte', 'del Sur', 'Pacífico', 'Caribe', 'Jazmín', 'Nexus'];
+
+    if (category.toLowerCase().includes('abogado') || category.toLowerCase().includes('bufete')) return `Bufete ${suffixes[Math.floor(Math.random() * suffixes.length)]} & Asociados`;
+    if (category.toLowerCase().includes('restaurante') || category.toLowerCase().includes('soda')) return `${category} ${suffixes[Math.floor(Math.random() * suffixes.length)]}`;
+
+    return `${prefixes[Math.floor(Math.random() * prefixes.length)]} ${category} ${suffixes[Math.floor(Math.random() * suffixes.length)]}`;
   };
 
   const handleGenerate = async () => {
@@ -109,12 +117,20 @@ function App() {
     setIsGenerating(true);
     setTrackingLogs([]);
 
+    if (activeMode === 'asalariado') {
+      addLog(`> INICIANDO MOTOR DE VERIFICACIÓN DE PERSONAS: Consultando TSE...`);
+    } else {
+      addLog(`> Iniciando rastreo omnicanal en ${province}...`);
+    }
+
     if (isRealMode) {
       addLog(`> CONECTANDO MOTORES REALES: Iniciando rastreo en n8n...`);
       try {
         const payload = activeMode === 'domain'
           ? { domain: targetDomain }
-          : { query, province, layer: filters.sourceLayer, url: targetUrl };
+          : activeMode === 'asalariado'
+            ? { person: targetPersonName, cedula: targetPersonId }
+            : { query, province, layer: filters.sourceLayer, url: targetUrl };
 
         const response = await fetch('https://n8n.jazm.io/webhook/nexus-leads', {
           method: 'POST',
@@ -129,11 +145,10 @@ function App() {
             withEmail: data.leads.filter((l: any) => l.email).length,
             withPhone: data.leads.filter((l: any) => l.phone).length
           });
-          addLog(`[ÉXITO] Extracción real completada: ${data.leads.length} leads importados.`);
+          addLog(`[ÉXITO] Operación real completada.`);
         }
       } catch (error) {
-        addLog(`[ERROR] Fallo en conexión con n8n. Verificando backup...`);
-        // Fallback or alert
+        addLog(`[ERROR] Fallo en conexión con n8n.`);
       }
       setIsGenerating(false);
       return;
@@ -378,24 +393,30 @@ function App() {
         >
           {/* Search Configuration Panel */}
           <section className="lg:col-span-1 space-y-6">
-            <div className="quantum-card p-2 flex gap-1 mb-0 rounded-2xl mx-2 bg-surface-100/50 border-none shadow-none">
+            <div className="quantum-card p-1.5 flex gap-1 mb-0 rounded-2xl mx-1 bg-surface-100/50 border-none shadow-none">
               <button
                 onClick={() => setActiveMode('search')}
-                className={`flex-1 py-1.5 text-[10px] font-bold rounded-xl transition-all ${activeMode === 'search' ? 'bg-white shadow-sm text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
+                className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-tighter rounded-xl transition-all ${activeMode === 'search' ? 'bg-white shadow-sm text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
               >
-                Búsqueda
-              </button>
-              <button
-                onClick={() => setActiveMode('direct')}
-                className={`flex-1 py-1.5 text-[10px] font-bold rounded-xl transition-all ${activeMode === 'direct' ? 'bg-white shadow-sm text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
-              >
-                URL
+                Industria
               </button>
               <button
                 onClick={() => setActiveMode('domain')}
-                className={`flex-1 py-1.5 text-[10px] font-bold rounded-xl transition-all ${activeMode === 'domain' ? 'bg-white shadow-sm text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
+                className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-tighter rounded-xl transition-all ${activeMode === 'domain' ? 'bg-white shadow-sm text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
               >
                 Dominio
+              </button>
+              <button
+                onClick={() => setActiveMode('asalariado')}
+                className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-tighter rounded-xl transition-all ${activeMode === 'asalariado' ? 'bg-white shadow-sm text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
+              >
+                Asalariado
+              </button>
+              <button
+                onClick={() => setActiveMode('direct')}
+                className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-tighter rounded-xl transition-all ${activeMode === 'direct' ? 'bg-white shadow-sm text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
+              >
+                URL
               </button>
             </div>
 
@@ -405,13 +426,17 @@ function App() {
                   <>
                     <Search className="w-5 h-5 text-primary-600" /> Configuración Pro
                   </>
-                ) : activeMode === 'direct' ? (
+                ) : activeMode === 'domain' ? (
                   <>
-                    <Globe className="w-5 h-5 text-primary-600" /> Scraping de URL
+                    <Globe className="w-5 h-5 text-primary-600" /> Búsqueda por Dominio
+                  </>
+                ) : activeMode === 'asalariado' ? (
+                  <>
+                    <Shield className="w-5 h-5 text-green-600" /> Motor TSE / CCSS
                   </>
                 ) : (
                   <>
-                    <Mail className="w-5 h-5 text-primary-600" /> Búsqueda por Dominio
+                    <Globe className="w-5 h-5 text-blue-600" /> Scraping de URL
                   </>
                 )}
               </h2>
@@ -474,34 +499,7 @@ function App() {
                     </div>
                   </div>
                 ) : (
-                  activeMode === 'direct' ? (
-                    <div>
-                      <label className="block text-sm font-semibold text-surface-700 mb-1.5">Plataformas Sugeridas</label>
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {SUGGESTED_PLATFORMS.map((plat) => {
-                          const Icon = plat.icon;
-                          return (
-                            <button
-                              key={plat.name}
-                              onClick={() => setTargetUrl(plat.url)}
-                              className={`px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all flex items-center gap-1 ${targetUrl === plat.url ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-surface-600 border-surface-200 hover:border-primary-300'}`}
-                            >
-                              <Icon className="w-3 h-3" /> {plat.name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <label className="block text-sm font-semibold text-surface-700 mb-2">URL del Sitio</label>
-                      <input
-                        type="url"
-                        placeholder="https://www.ejemplo.com"
-                        className="w-full px-5 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm"
-                        value={targetUrl}
-                        onChange={(e) => setTargetUrl(e.target.value)}
-                        title="URL del Sitio"
-                      />
-                    </div>
-                  ) : (
+                  activeMode === 'domain' ? (
                     <div>
                       <label className="block text-sm font-semibold text-surface-700 mb-2">Dominio de Correo</label>
                       <div className="relative">
@@ -515,9 +513,49 @@ function App() {
                           title="Dominio de Correo"
                         />
                       </div>
-                      <p className="text-[10px] text-surface-400 mt-2 italic px-2">
-                        Nexus AI extraerá todos los correos activos encontrados bajo este dominio en la web profunda.
-                      </p>
+                    </div>
+                  ) : activeMode === 'asalariado' ? (
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-surface-400 uppercase tracking-widest px-1">Nombre Completo</label>
+                        <input
+                          type="text"
+                          className="w-full px-4 py-3 rounded-2xl border border-surface-200 focus:ring-2 focus:ring-green-500/20 outline-none font-medium"
+                          placeholder="Ej: Jose Maria Figueres"
+                          value={targetPersonName}
+                          onChange={(e) => setTargetPersonName(e.target.value)}
+                          title="Nombre del Asalariado"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-surface-400 uppercase tracking-widest px-1">Cédula de Identidad</label>
+                        <input
+                          type="text"
+                          className="w-full px-4 py-3 rounded-2xl border border-surface-200 focus:ring-2 focus:ring-green-500/20 outline-none font-mono"
+                          placeholder="1-0123-0456"
+                          value={targetPersonId}
+                          onChange={(e) => setTargetPersonId(e.target.value)}
+                          title="Cédula de Identidad"
+                        />
+                      </div>
+                      <div className="bg-green-50 rounded-2xl p-4 border border-green-100">
+                        <p className="text-[10px] text-green-700 font-bold leading-relaxed">
+                          <Shield className="w-3 h-3 inline mr-1" /> CUMPLIMIENTO LEY 8968:
+                          Solo se consultan bases públicas del TSE y CCSS para confirmar estabilidad laboral.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-semibold text-surface-700 mb-2">Sitio Web Objetivo</label>
+                      <input
+                        type="url"
+                        placeholder="https://www.ejemplo.com"
+                        className="w-full px-5 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm"
+                        value={targetUrl}
+                        onChange={(e) => setTargetUrl(e.target.value)}
+                        title="URL del Sitio"
+                      />
                     </div>
                   )
                 )}
