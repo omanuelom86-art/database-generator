@@ -188,30 +188,24 @@ function App() {
 
         try {
           const response = await fetch(url, options);
-          const rawText = await response.text();
-
-          // Debugging verbose
-          addLog(`[RAW] Recibidos ${rawText.length} bytes.`);
-          if (rawText.length > 0) {
-            addLog(`[DATA] Muestra: ${rawText.substring(0, 100).replace(/\n/g, '')}...`);
-          }
 
           if (!response.ok) {
             addLog(`[FALLA ${response.status}] El servidor rechazó el envío.`);
-            throw new Error(`HTTP ${response.status}`);
+            return false;
           }
+
+          const rawText = await response.text();
+          addLog(`[RAW] Recibidos ${rawText.length} bytes.`);
 
           let data;
           try {
             data = JSON.parse(rawText);
           } catch (pErr) {
             addLog(`[ERROR FORMATO] La respuesta no es un JSON válido.`);
-            throw pErr;
+            return false;
           }
 
           addLog(`[INFO] Analizando estructura de datos...`);
-
-          // Manejar respuesta de n8n que puede venir como array directo o objeto con .leads
           const rawLeads = Array.isArray(data) ? data : (data.leads || data.results || data.data || []);
 
           if (Array.isArray(rawLeads) && rawLeads.length > 0) {
@@ -225,37 +219,21 @@ function App() {
             return true;
           } else {
             addLog(`[AVISO] Respuesta legible pero 0 leads encontrados.`);
-            if (data) addLog(`> Campos detectados: ${Object.keys(data).join(', ')}`);
             return false;
           }
         } catch (fetchErr: any) {
-          addLog(`[BLOQUEO] Falló vía ${mode}: ${fetchErr.message}`);
-          throw fetchErr;
+          addLog(`[MODO ${mode}] No disponible o error de red: ${fetchErr.message}`);
+          return false;
         }
       };
 
-      try {
-        const ok = await performN8NRequest('standard');
-        if (!ok) {
-          addLog(`> Probando modo alternativo...`);
-          const ok2 = await performN8NRequest('simple');
-          if (!ok2) {
-            addLog(`> Probando túnel de emergencia...`);
-            await performN8NRequest('proxy');
-          }
-        }
-      } catch (_e1) {
-        try {
-          await new Promise(r => setTimeout(r, 600));
-          await performN8NRequest('simple');
-        } catch (_e2) {
-          try {
-            await new Promise(r => setTimeout(r, 800));
-            await performN8NRequest('proxy');
-          } catch (_e3) {
-            addLog(`[CRÍTICO] Todos los intentos fallaron.`);
-            addLog(`> REVISA: Conectividad n8n y formato de respuesta.`);
-          }
+      // Logic sequence: Try Standard -> Simple -> Professional Proxy
+      const ok = await performN8NRequest('standard');
+      if (!ok) {
+        addLog(`[INFO] Redirigiendo vía Túnel Profesional...`);
+        const ok2 = await performN8NRequest('proxy');
+        if (!ok2) {
+          addLog(`[FALLA FINAL] No se pudo establecer conexión con el motor de n8n.`);
         }
       }
       addLog('--- RASTREO FINALIZADO ---');

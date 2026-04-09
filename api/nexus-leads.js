@@ -16,18 +16,27 @@ export default async function handler(req, res) {
 
     try {
         const url = 'https://n8n-production-c420.up.railway.app/webhook/nexus-leads';
+
+        // Ensure body is a string for fetch
+        const bodyStr = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+
         const response = await fetch(url, {
             method: req.method,
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
-            body: JSON.stringify(req.body)
+            body: bodyStr
         });
 
         const data = await response.json();
-        return res.status(200).json(data);
+        return res.status(response.status).json(data);
     } catch (error) {
-        console.error('Error in proxy:', error);
-        return res.status(500).json({ error: error.message });
+        console.error('[PROXY ERROR]:', error);
+        return res.status(502).json({
+            error: 'Proxy Error',
+            message: error.message,
+            tip: 'Verifica que el webhook de n8n esté activo en Railway.'
+        });
     }
 }
