@@ -3,8 +3,6 @@ import {
   Database,
   Search,
   Download,
-  Plus,
-  Settings,
   Shield,
   Globe,
   Mail,
@@ -15,7 +13,10 @@ import {
   CheckCircle2,
   AlertCircle,
   RotateCcw,
-  Square
+  Square,
+  FileJson,
+  ClipboardCheck,
+  MapPin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -41,29 +42,14 @@ const COSTA_RICA_PROVINCES = [
 ];
 
 const INDUSTRY_CATEGORIES = [
-  // Sector A: Agro & Ganadería
   'Cafetaleras', 'Bananeras', 'Floristerías Mayoristas', 'Hortalizas', 'Lecherías', 'Veterinarias Rurales', 'Maquinaria Agrícola',
-  // Sector B-F: Industria & Construcción
   'Fábricas de Alimentos', 'Textileras', 'Plantas de Plástico', 'Metalmecánica', 'Desarrolladoras Inmobiliarias', 'Constructoras', 'Contratistas Eléctricos', 'Ferreterías Industriales',
-  // Sector G: Comercio
   'Venta de Autos', 'Repuestos Automotrices', 'Talleres Mecánicos', 'Llanteras', 'Distribuidoras de Químicos', 'Supermercados', 'Tiendas de Ropa', 'Librerías', 'Electrodomésticos',
-  // Sector I: Turísmo & Gastronomía
   'Hoteles', 'Hostales', 'Airbnb Comerciales', 'Restaurantes', 'Sodas', 'Cafeterías', 'Bares', 'Catering Service', 'Food Trucks', 'Pizzerías', 'Sushis',
-  // Sector J: Tecnología & Medios
   'Software Factory', 'Consultoría IT', 'Agencias de Marketing', 'Radiodifusoras', 'Productoras de Video', 'Periódicos Digitales',
-  // Sector M: Profesionales
   'Bufetes de Abogados', 'Notarios', 'Auditores', 'Contadores Públicos', 'Asesores Fiscales', 'Firmas de Arquitectura', 'Topógrafos', 'Agencias de Publicidad',
-  // Sector P-S: Salud & Educación
   'Escuelas Privadas', 'Centros de Idiomas', 'Universidades', 'Clínicas Privadas', 'Consultorios Dentales', 'Centros de Estética', 'Farmacias', 'Gimnasios', 'Salones de Belleza', 'Funerarias',
-  // Sector K-L: Finanzas
   'Bancos', 'Cooperativas de Ahorro', 'Casas de Cambio', 'Bienes Raíces', 'Administradoras de Condominios'
-];
-
-const SUGGESTED_PLATFORMS = [
-  { name: 'Google Maps', url: 'https://www.google.com/maps', icon: Globe },
-  { name: 'Mercado Libre', url: 'https://www.mercadolibre.com.cr', icon: Building2 },
-  { name: 'Facebook', url: 'https://www.facebook.com', icon: Globe },
-  { name: 'CR Autos', url: 'https://www.crautos.com', icon: Building2 },
 ];
 
 const PROFESSIONAL_COLLEGES = [
@@ -87,8 +73,8 @@ function App() {
     hasEmail: false,
     hasPhone: false,
     deepSearch: false,
-    sourceLayer: 'maps', // 'maps' | 'meta' | 'directorios'
-    radius: 5, // km
+    sourceLayer: 'maps',
+    radius: 5,
     onlyRecents: true
   });
   const [isGenerating, setIsGenerating] = useState(false);
@@ -137,17 +123,17 @@ function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        const data = await response.json();
+        const data: { leads?: Lead[] } = await response.json();
         if (data.leads) {
           setLeads(data.leads);
           setStats({
             total: data.leads.length,
-            withEmail: data.leads.filter((l: any) => l.email).length,
-            withPhone: data.leads.filter((l: any) => l.phone).length
+            withEmail: data.leads.filter((l: Lead) => l.email).length,
+            withPhone: data.leads.filter((l: Lead) => l.phone).length
           });
           addLog(`[ÉXITO] Operación real completada.`);
         }
-      } catch (error) {
+      } catch (err) {
         addLog(`[ERROR] Fallo en conexión con n8n.`);
       }
       setIsGenerating(false);
@@ -160,15 +146,12 @@ function App() {
     const maxSimulated = 10000;
 
     searchInterval.current = setInterval(() => {
-      // Simulation logic here...
       for (let i = 0; i < 20; i++) {
         count++;
         const name = getBusinessName(query || 'Servicios');
-        const layer = filters.sourceLayer === 'all'
-          ? ['G. Maps', 'Meta Ads', 'Colegios', 'Guía Tel'][Math.floor(Math.random() * 4)]
-          : ['G. Maps', 'Meta Ads', 'Colegios', 'Guía Tel'][Math.floor(Math.random() * 4)];
+        const layer = ['G. Maps', 'Meta Ads', 'Colegios', 'Guía Tel'][Math.floor(Math.random() * 4)];
 
-        const newLead = {
+        const newLead: Lead = {
           id: Date.now() + count,
           company: name,
           industry: query.toUpperCase() || 'SERVICIOS',
@@ -177,7 +160,7 @@ function App() {
           address: `${COSTA_RICA_PROVINCES[Math.floor(Math.random() * COSTA_RICA_PROVINCES.length)]}, CR`,
           socials: layer,
           confidence: Math.floor(Math.random() * 20) + 75,
-          status: 'verified' as Lead['status']
+          status: 'verified'
         };
         currentLeads = [newLead, ...currentLeads];
       }
@@ -244,31 +227,47 @@ function App() {
     addLog('> Sesión reiniciada. Listo para nueva búsqueda.');
   };
 
-  const downloadCSV = () => {
-    const headers = ['ID', 'NOMBRE DE EMPRESA', 'INDUSTRIA', 'CORREO ELECTRONICO', 'TELEFONO', 'DIRECCION', 'FUENTE (CAPA)', 'PRECISION MATCH (%)'];
+  const handleExport = (format: 'csv' | 'json' | 'copy') => {
+    if (leads.length === 0) return;
+
+    if (format === 'json') {
+      const blob = new Blob([JSON.stringify(leads, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `nexus_ai_export_${new Date().getTime()}.json`;
+      link.click();
+      return;
+    }
+
+    if (format === 'copy') {
+      const text = leads.map(l => `${l.company}\t${l.email}\t${l.phone}\t${l.address}`).join('\n');
+      navigator.clipboard.writeText(text);
+      addLog('[ÉXITO] Datos (incluyendo direcciones) copiados.');
+      return;
+    }
+
+    const headers = ['ID', 'NOMBRE', 'INDUSTRIA', 'EMAIL', 'TELEFONO', 'DIRECCION', 'CAPA', 'MATCH'];
     const csvContent = [
       headers.join(','),
-      ...leads.map((lead, index) => [
-        index + 1,
-        `"${lead.company}"`,
-        `"${lead.industry}"`,
-        `"${lead.email}"`,
-        `"${lead.phone}"`,
-        `"${lead.address}"`,
-        `"${lead.socials}"`,
-        `"${lead.confidence}%"`
+      ...leads.map((l, i) => [
+        i + 1,
+        `"${l.company}"`,
+        `"${l.industry}"`,
+        `"${l.email}"`,
+        `"${l.phone}"`,
+        `"${l.address}"`,
+        `"${l.socials}"`,
+        `"${l.confidence}%"`
       ].join(','))
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `nexus_ai_database_cr_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `nexus_ai_export_${new Date().getTime()}.csv`;
     link.click();
-    document.body.removeChild(link);
   };
 
   const removeDuplicates = () => {
@@ -278,7 +277,6 @@ function App() {
 
   return (
     <div className="min-h-screen bg-surface-50">
-      {/* Legal Overlay Modal */}
       <AnimatePresence>
         {showLegalWarning && (
           <motion.div
@@ -329,7 +327,6 @@ function App() {
         )}
       </AnimatePresence>
 
-      {/* Premium Header */}
       <header className="glass-header px-8 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3 w-1/4">
           <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/20">
@@ -345,7 +342,6 @@ function App() {
           </div>
         </div>
 
-        {/* TOP CENTER COUNTER */}
         <div className="flex-1 flex justify-center">
           <div className="bg-surface-100/80 backdrop-blur-md px-6 py-2 rounded-2xl border border-white shadow-inner flex items-center gap-8">
             <div className="text-center group">
@@ -365,23 +361,37 @@ function App() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 w-1/4 justify-end">
+        <div className="flex items-center gap-2 w-1/3 justify-end">
+          <div className="flex bg-surface-100 rounded-xl p-1 border border-surface-200">
+            <button
+              onClick={() => handleExport('csv')}
+              className="px-3 py-1.5 text-[10px] font-bold text-surface-600 hover:bg-white rounded-lg transition-all flex items-center gap-1"
+              title="Exportar como CSV (Excel)"
+            >
+              <Download className="w-3 h-3" /> CSV
+            </button>
+            <button
+              onClick={() => handleExport('json')}
+              className="px-3 py-1.5 text-[10px] font-bold text-surface-600 hover:bg-white rounded-lg transition-all flex items-center gap-1"
+              title="Exportar como JSON (Desarrolladores)"
+            >
+              <FileJson className="w-3 h-3" /> JSON
+            </button>
+            <button
+              onClick={() => handleExport('copy')}
+              className="px-3 py-1.5 text-[10px] font-bold text-surface-600 hover:bg-white rounded-lg transition-all flex items-center gap-1"
+              title="Copiar al portapapeles"
+            >
+              <ClipboardCheck className="w-3 h-3" /> Copiar
+            </button>
+          </div>
           <button
             onClick={() => setIsRealMode(!isRealMode)}
             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all flex items-center gap-2 ${isRealMode ? 'bg-red-600 text-white border-red-400 shadow-lg shadow-red-500/30' : 'bg-surface-50 text-surface-400 border-surface-200'}`}
           >
             <div className={`w-2 h-2 rounded-full ${isRealMode ? 'bg-white animate-pulse' : 'bg-surface-300'}`} />
-            {isRealMode ? 'Modo Real Activo' : 'Simulación'}
+            {isRealMode ? 'Real' : 'Sim'}
           </button>
-          <button
-            onClick={downloadCSV}
-            className="secondary-button !py-2 text-xs bg-primary-600 text-white border-primary-600 shadow-lg shadow-primary-500/20 hover:bg-primary-700"
-          >
-            <Download className="w-4 h-4" /> Exportar Base
-          </button>
-          <div className="w-10 h-10 rounded-full border border-surface-200 overflow-hidden bg-white flex items-center justify-center shadow-sm">
-            <Settings className="w-5 h-5 text-surface-400" />
-          </div>
         </div>
       </header>
 
@@ -391,7 +401,6 @@ function App() {
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-1 lg:grid-cols-4 gap-10"
         >
-          {/* Search Configuration Panel */}
           <section className="lg:col-span-1 space-y-6">
             <div className="quantum-card p-1.5 flex gap-1 mb-0 rounded-2xl mx-1 bg-surface-100/50 border-none shadow-none">
               <button
@@ -684,7 +693,6 @@ function App() {
                   )}
                 </div>
 
-                {/* SMART ACTIONS IN SIDEBAR */}
                 <div className="pt-6 mt-6 border-t border-surface-100 space-y-3">
                   <label className="block text-[10px] font-bold text-surface-400 uppercase tracking-widest">Post-Procesamiento IA</label>
                   <button
@@ -710,7 +718,6 @@ function App() {
                 </div>
               </div>
 
-              {/* AI Tracking Console */}
               {trackingLogs.length > 0 && (
                 <div className="glass-card p-4 space-y-3 border-cyan-500/30">
                   <div className="flex items-center gap-2 text-cyan-400 font-bold text-xs uppercase tracking-widest">
@@ -731,8 +738,6 @@ function App() {
                   </div>
                 </div>
               )}
-
-              {/* Space for other sidebar elements if needed */}
 
               <div className="mt-6">
                 <div className="flex items-center justify-between text-sm text-surface-500 mb-1">
@@ -755,7 +760,6 @@ function App() {
             </div>
           </section>
 
-          {/* Results Display Panel */}
           <section className="lg:col-span-3 space-y-6">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-2xl font-bold text-surface-800">Bases de Datos CR</h2>
