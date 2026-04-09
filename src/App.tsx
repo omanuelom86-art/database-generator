@@ -18,8 +18,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MOCK_LEADS = [
-  { id: 1, company: 'TechNova Solutions', industry: 'Software', email: 'contact@technova.cr', phone: '+506 2222 3456', confidence: 98, status: 'verified' },
-  { id: 2, company: 'GreenEdge CR', industry: 'Renewables', email: 'ventas@greenedge.cr', phone: '+506 8888 7777', confidence: 92, status: 'verified' },
+  { id: 1, company: 'TechNova Solutions', industry: 'Software', email: 'contact@technova.cr', phone: '+506 2222 3456', address: 'Paseo Colón, San José', socials: 'FB, LI', confidence: 98, status: 'verified' },
+  { id: 2, company: 'GreenEdge CR', industry: 'Renewables', email: 'ventas@greenedge.cr', phone: '+506 8888 7777', address: 'Santa Ana, San José', socials: 'IG, FB', confidence: 92, status: 'verified' },
 ];
 
 const COSTA_RICA_PROVINCES = [
@@ -58,6 +58,8 @@ function App() {
         industry: query || 'Servicios',
         email: Math.random() > 0.3 ? `contacto@${(query || 'leads').toLowerCase().replace(/\s/g, '')}.com` : '',
         phone: Math.random() > 0.4 ? `+506 ${Math.floor(Math.random() * 80000000) + 10000000}` : '',
+        address: `${province}, Costa Rica`,
+        socials: 'FB, IG',
         confidence: Math.floor(Math.random() * 20) + 75,
         status: 'pending'
       };
@@ -74,11 +76,13 @@ function App() {
 
   const handleEnrich = (id?: number) => {
     const enrichLead = (lead: any) => {
-      if (!lead.email || !lead.phone) {
+      if (!lead.email || !lead.phone || !lead.address) {
         return {
           ...lead,
-          email: lead.email || `found@${lead.company.toLowerCase().replace(/\s/g, '')}.cr`,
+          email: lead.email || `encontrado@${lead.company.toLowerCase().replace(/\s/g, '')}.cr`,
           phone: lead.phone || `+506 ${Math.floor(Math.random() * 80000000) + 20000000}`,
+          address: lead.address || `Central, ${province}`,
+          socials: lead.socials || 'FB, IG, LI',
           status: 'verified',
           confidence: 99
         };
@@ -96,14 +100,17 @@ function App() {
   };
 
   const downloadCSV = () => {
-    const headers = ['Company', 'Industry', 'Email', 'Phone', 'Confidence'];
+    const headers = ['#', 'Empresa', 'Industria', 'Email', 'Telefono', 'Direccion', 'Sociales', 'Match'];
     const csvContent = [
       headers.join(','),
-      ...leads.map(lead => [
+      ...leads.map((lead, index) => [
+        index + 1,
         `"${lead.company}"`,
         `"${lead.industry}"`,
         lead.email,
         `"${lead.phone}"`,
+        `"${lead.address}"`,
+        `"${lead.socials}"`,
         lead.confidence
       ].join(','))
     ].join('\n');
@@ -112,7 +119,7 @@ function App() {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `leads_cr_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `base_datos_cr_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -408,22 +415,27 @@ function App() {
                 <table className="w-full text-left">
                   <thead>
                     <tr className="bg-surface-100/50">
+                      <th className="px-4 py-4 text-xs font-bold text-surface-500 uppercase tracking-wider text-center">#</th>
                       <th className="px-6 py-4 text-xs font-bold text-surface-500 uppercase tracking-wider">Empresa / Cliente</th>
                       <th className="px-6 py-4 text-xs font-bold text-surface-500 uppercase tracking-wider">Industria</th>
                       <th className="px-6 py-4 text-xs font-bold text-surface-500 uppercase tracking-wider">Contacto</th>
+                      <th className="px-6 py-4 text-xs font-bold text-surface-500 uppercase tracking-wider">Detalles Extras</th>
                       <th className="px-6 py-4 text-xs font-bold text-surface-500 uppercase tracking-wider text-center">Precisión</th>
                       <th className="px-6 py-4 text-xs font-bold text-surface-500 uppercase tracking-wider text-center">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-surface-100">
                     <AnimatePresence>
-                      {leads.map((lead) => (
+                      {leads.map((lead, index) => (
                         <motion.tr
                           key={lead.id}
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           className="hover:bg-primary-50/50 transition-colors group"
                         >
+                          <td className="px-4 py-5 text-center font-bold text-surface-400 text-xs">
+                            {index + 1}
+                          </td>
                           <td className="px-6 py-5">
                             <div className="font-bold text-surface-900 flex items-center gap-2">
                               <Building2 className="w-4 h-4 text-surface-400" />
@@ -447,6 +459,16 @@ function App() {
                               </div>
                             </div>
                           </td>
+                          <td className="px-6 py-5">
+                            <div className="text-[10px] space-y-1">
+                              <div className="text-surface-600 flex items-center gap-1.5 font-medium">
+                                <Globe className="w-2.5 h-2.5" /> {lead.address}
+                              </div>
+                              <div className="text-primary-600/70 flex items-center gap-1.5 font-bold uppercase tracking-tighter">
+                                <Plus className="w-2.5 h-2.5" /> {lead.socials}
+                              </div>
+                            </div>
+                          </td>
                           <td className="px-6 py-5 text-center">
                             <div className="flex flex-col items-center">
                               <span className={`text-[10px] font-bold mb-1 ${lead.confidence > 90 ? 'text-primary-600' : 'text-surface-400'}`}>
@@ -460,10 +482,11 @@ function App() {
                             </div>
                           </td>
                           <td className="px-6 py-5 text-center">
-                            {(!lead.email || !lead.phone) && (
+                            {(!lead.email || !lead.phone || !lead.address) && (
                               <button
                                 onClick={() => handleEnrich(lead.id)}
-                                className="p-2 hover:bg-orange-100 rounded-lg text-orange-600 transition-all title='Completar datos faltantes'"
+                                className="p-2 hover:bg-orange-100 rounded-lg text-orange-600 transition-all"
+                                title="Completar datos faltantes"
                               >
                                 <Plus className="w-4 h-4" />
                               </button>
