@@ -61,10 +61,11 @@ const PROFESSIONAL_COLLEGES = [
 ];
 
 function App() {
-  const [activeMode, setActiveMode] = useState<'search' | 'direct'>('search');
+  const [activeMode, setActiveMode] = useState<'search' | 'direct' | 'domain'>('search');
   const [query, setQuery] = useState('');
-  const [province, setProvince] = useState('San José');
   const [targetUrl, setTargetUrl] = useState('');
+  const [targetDomain, setTargetDomain] = useState('');
+  const [province, setProvince] = useState(COSTA_RICA_PROVINCES[0]);
   const [showLegalWarning, setShowLegalWarning] = useState(false);
   const [filters, setFilters] = useState({
     minConfidence: 80,
@@ -111,10 +112,14 @@ function App() {
     if (isRealMode) {
       addLog(`> CONECTANDO MOTORES REALES: Iniciando rastreo en n8n...`);
       try {
+        const payload = activeMode === 'domain'
+          ? { domain: targetDomain }
+          : { query, province, layer: filters.sourceLayer, url: targetUrl };
+
         const response = await fetch('https://n8n.jazm.io/webhook/nexus-leads', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query, province, layer: filters.sourceLayer })
+          body: JSON.stringify(payload)
         });
         const data = await response.json();
         if (data.leads) {
@@ -373,18 +378,24 @@ function App() {
         >
           {/* Search Configuration Panel */}
           <section className="lg:col-span-1 space-y-6">
-            <div className="quantum-card p-2 flex gap-1 mb-0 rounded-2xl mx-8 bg-surface-100/50 border-none shadow-none">
+            <div className="quantum-card p-2 flex gap-1 mb-0 rounded-2xl mx-2 bg-surface-100/50 border-none shadow-none">
               <button
                 onClick={() => setActiveMode('search')}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${activeMode === 'search' ? 'bg-white shadow-sm text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
+                className={`flex-1 py-1.5 text-[10px] font-bold rounded-xl transition-all ${activeMode === 'search' ? 'bg-white shadow-sm text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
               >
                 Búsqueda
               </button>
               <button
                 onClick={() => setActiveMode('direct')}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${activeMode === 'direct' ? 'bg-white shadow-sm text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
+                className={`flex-1 py-1.5 text-[10px] font-bold rounded-xl transition-all ${activeMode === 'direct' ? 'bg-white shadow-sm text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
               >
-                Link Directo
+                URL
+              </button>
+              <button
+                onClick={() => setActiveMode('domain')}
+                className={`flex-1 py-1.5 text-[10px] font-bold rounded-xl transition-all ${activeMode === 'domain' ? 'bg-white shadow-sm text-primary-600' : 'text-surface-500 hover:text-surface-700'}`}
+              >
+                Dominio
               </button>
             </div>
 
@@ -394,9 +405,13 @@ function App() {
                   <>
                     <Search className="w-5 h-5 text-primary-600" /> Configuración Pro
                   </>
-                ) : (
+                ) : activeMode === 'direct' ? (
                   <>
                     <Globe className="w-5 h-5 text-primary-600" /> Scraping de URL
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-5 h-5 text-primary-600" /> Búsqueda por Dominio
                   </>
                 )}
               </h2>
@@ -459,32 +474,52 @@ function App() {
                     </div>
                   </div>
                 ) : (
-                  <div>
-                    <label className="block text-sm font-semibold text-surface-700 mb-1.5">Plataformas Sugeridas</label>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {SUGGESTED_PLATFORMS.map((plat) => {
-                        const Icon = plat.icon;
-                        return (
-                          <button
-                            key={plat.name}
-                            onClick={() => setTargetUrl(plat.url)}
-                            className={`px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all flex items-center gap-1 ${targetUrl === plat.url ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-surface-600 border-surface-200 hover:border-primary-300'}`}
-                          >
-                            <Icon className="w-3 h-3" /> {plat.name}
-                          </button>
-                        );
-                      })}
+                  activeMode === 'direct' ? (
+                    <div>
+                      <label className="block text-sm font-semibold text-surface-700 mb-1.5">Plataformas Sugeridas</label>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {SUGGESTED_PLATFORMS.map((plat) => {
+                          const Icon = plat.icon;
+                          return (
+                            <button
+                              key={plat.name}
+                              onClick={() => setTargetUrl(plat.url)}
+                              className={`px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all flex items-center gap-1 ${targetUrl === plat.url ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-surface-600 border-surface-200 hover:border-primary-300'}`}
+                            >
+                              <Icon className="w-3 h-3" /> {plat.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <label className="block text-sm font-semibold text-surface-700 mb-2">URL del Sitio</label>
+                      <input
+                        type="url"
+                        placeholder="https://www.ejemplo.com"
+                        className="w-full px-5 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm"
+                        value={targetUrl}
+                        onChange={(e) => setTargetUrl(e.target.value)}
+                        title="URL del Sitio"
+                      />
                     </div>
-                    <label className="block text-sm font-semibold text-surface-700 mb-2">URL del Sitio</label>
-                    <input
-                      type="url"
-                      placeholder="https://www.ejemplo.com"
-                      className="w-full px-5 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm"
-                      value={targetUrl}
-                      onChange={(e) => setTargetUrl(e.target.value)}
-                      title="URL del Sitio"
-                    />
-                  </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-semibold text-surface-700 mb-2">Dominio de Correo</label>
+                      <div className="relative">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-surface-400 font-bold text-lg">@</div>
+                        <input
+                          type="text"
+                          placeholder="empresa.cr"
+                          className="w-full pl-10 pr-5 py-3 rounded-2xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm font-bold"
+                          value={targetDomain}
+                          onChange={(e) => setTargetDomain(e.target.value.replace('@', ''))}
+                          title="Dominio de Correo"
+                        />
+                      </div>
+                      <p className="text-[10px] text-surface-400 mt-2 italic px-2">
+                        Nexus AI extraerá todos los correos activos encontrados bajo este dominio en la web profunda.
+                      </p>
+                    </div>
+                  )
                 )}
 
                 <div className="py-4 space-y-4 border-t border-surface-100 mt-4">
