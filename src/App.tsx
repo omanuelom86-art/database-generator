@@ -584,18 +584,18 @@ function App() {
                       }
                     }}
                     disabled={isGenerating || (activeMode === 'search' ? !query : !targetUrl)}
-                    className="primary-button flex-1 justify-center disabled:opacity-50 disabled:grayscale"
+                    className="primary-button flex-1 justify-center disabled:opacity-50 disabled:grayscale uppercase tracking-widest text-[10px]"
                     title="Iniciar proceso de extracción"
                   >
                     {isGenerating ? (
                       <span className="flex items-center gap-2">
                         <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Extrayendo...
+                        Ejecutando...
                       </span>
                     ) : (
                       <span className="flex items-center gap-2">
                         <Plus size={18} />
-                        Iniciar Extracción
+                        Extraer Datos
                       </span>
                     )}
                   </button>
@@ -609,6 +609,31 @@ function App() {
                       <Square size={20} className="fill-red-600 group-hover:scale-110 transition-transform" />
                     </button>
                   )}
+                </div>
+
+                {/* SMART ACTIONS IN SIDEBAR */}
+                <div className="pt-6 mt-6 border-t border-surface-100 space-y-3">
+                  <label className="block text-[10px] font-bold text-surface-400 uppercase tracking-widest">Post-Procesamiento IA</label>
+                  <button
+                    onClick={() => handleEnrich()}
+                    className="w-full py-3 px-4 bg-orange-50 border border-orange-200 text-orange-700 rounded-2xl text-[11px] font-bold flex items-center justify-between hover:bg-orange-100 transition-all group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Globe className="w-4 h-4 text-orange-500 group-hover:rotate-12 transition-transform" />
+                      Enriquecer con IA
+                    </div>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={removeDuplicates}
+                    className="w-full py-3 px-4 bg-surface-50 border border-surface-200 text-surface-600 rounded-2xl text-[11px] font-bold flex items-center justify-between hover:bg-white transition-all group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <RotateCcw className="w-4 h-4 text-surface-400 group-hover:-rotate-90 transition-transform" />
+                      Borrar Duplicados
+                    </div>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
@@ -669,27 +694,6 @@ function App() {
                 >
                   <RotateCcw size={14} />
                   Nueva Búsqueda
-                </button>
-                <button
-                  onClick={() => handleEnrich()}
-                  className="secondary-button text-xs !py-1.5 bg-orange-50 border-orange-100 text-orange-700 hover:bg-orange-100"
-                  title="Buscar datos faltantes en redes sociales"
-                >
-                  <Globe className="w-3.5 h-3.5" /> Enriquecer Base
-                </button>
-                <button
-                  onClick={removeDuplicates}
-                  className="secondary-button text-xs !py-1.5"
-                  title="Eliminar leads duplicados"
-                >
-                  <AlertCircle className="w-3.5 h-3.5" /> Borrar Duplicados
-                </button>
-                <button
-                  onClick={downloadCSV}
-                  className="secondary-button text-xs !py-1.5 bg-primary-50 border-primary-100 text-primary-700"
-                  title="Descargar base en formato CSV"
-                >
-                  <Download className="w-3.5 h-3.5" /> Exportar CSV
                 </button>
               </div>
             </div>
