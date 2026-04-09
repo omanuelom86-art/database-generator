@@ -57,14 +57,36 @@ function App() {
   const [leads, setLeads] = useState(MOCK_LEADS);
   const [stats, setStats] = useState({ total: 2, withEmail: 2, withPhone: 2 });
 
+  const getBusinessName = (category: string) => {
+    const cat = category.toLowerCase();
+    const suffixes = ['CR', 'Solutions', 'Global', 'Logistics', 'Gourmet', 'Legal'];
+    const prefixes = ['Soda', 'Restaurante', 'Taller', 'Bufete', 'Agencia'];
+
+    if (cat.includes('restaurante') || cat.includes('comida') || cat.includes('soda')) {
+      const names = ['El Gran Sabor', 'La Casona', 'Pura Vida', 'Doña María', 'El Fogón'];
+      return `${prefixes[Math.floor(Math.random() * 2)]} ${names[Math.floor(Math.random() * names.length)]}`;
+    }
+    if (cat.includes('abogado') || cat.includes('ley')) {
+      const names = ['Arias', 'Zamora', 'Chaves', 'Quesada', 'Mora'];
+      return `Bufete ${names[Math.floor(Math.random() * names.length)]} & Asociados`;
+    }
+    if (cat.includes('taller') || cat.includes('mecanico')) {
+      const names = ['Los Gemelos', 'San Judas', 'Automotriz J&M', 'El Rápido'];
+      return `Taller ${names[Math.floor(Math.random() * names.length)]}`;
+    }
+
+    return `${category.charAt(0).toUpperCase() + category.slice(1)} ${suffixes[Math.floor(Math.random() * suffixes.length)]}`;
+  };
+
   const handleGenerate = () => {
     setIsGenerating(true);
     setTimeout(() => {
+      const name = getBusinessName(query || 'Servicios');
       const newLead = {
         id: Date.now(),
-        company: query || (targetUrl ? new URL(targetUrl).hostname : 'Empresa CR'),
-        industry: query || 'Servicios',
-        email: Math.random() > 0.3 ? `contacto@${(query || 'leads').toLowerCase().replace(/\s/g, '')}.com` : '',
+        company: name,
+        industry: query.toUpperCase() || 'SERVICIOS',
+        email: Math.random() > 0.3 ? `contacto@${name.toLowerCase().replace(/\s/g, '')}.cr` : '',
         phone: Math.random() > 0.4 ? `+506 ${Math.floor(Math.random() * 80000000) + 10000000}` : '',
         address: `${province}, Costa Rica`,
         socials: 'FB, IG',
