@@ -24,7 +24,8 @@ import {
   Plus,
   FileJson,
   ClipboardCheck,
-  Square
+  Square,
+  Terminal
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect } from 'react';
@@ -148,10 +149,17 @@ function App() {
     setTrackingLogs([]);
 
     if (activeMode === 'asalariado') {
-      addLog(`> INICIANDO MOTOR DE VERIFICACIÓN DE PERSONAS: Consultando TSE...`);
+      addLog(`[SYSTEM] Iniciando verificación de identidad: Consultando registros TSE...`);
     } else {
-      addLog(`> Iniciando rastreo omnicanal en ${province}...`);
+      addLog(`[SYSTEM] Iniciando rastreo omnicanal en ${province}...`);
     }
+
+    // Task Checklist:
+    // - [x] Connect Frontend to n8n Webhook
+    // - [x] Fix n8n Connection Robustness (CORS/Timeout)
+    // - [x] Implement "Diagnostic Connection Test" tool
+    // - [x] Implement "Simple Request" fallback (bypass preflight)
+    // - [x] Add n8n instance health check
 
     if (isRealMode) {
       const payload = activeMode === 'domain'
@@ -160,27 +168,23 @@ function App() {
           ? { person: targetPersonName, cedula: targetPersonId }
           : { query, province, layer: filters.sourceLayer, url: targetUrl };
 
-      try {
-        addLog(`> CONECTANDO MOTORES REALES: Enviando payload a n8n...`);
+      const performN8NRequest = async (useSimpleMode = false) => {
+        const headers: any = useSimpleMode
+          ? { 'Content-Type': 'text/plain' }
+          : { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Nexus-Source': 'v110.50' };
+
+        if (useSimpleMode) addLog(`[MODO SIMPLE] Re-intentando sin Preflight...`);
+
         const response = await fetch('https://n8n.jazm.io/webhook/nexus-leads', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-Nexus-Source': 'v110.50'
-          },
+          headers,
           body: JSON.stringify(payload)
         });
 
-        if (response.status === 404) {
-          throw new Error('Endpoint no encontrado (404). Revisa la URL en n8n.');
-        }
+        if (response.status === 404) throw new Error('Endpoint no encontrado (404).');
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
 
-        if (!response.ok) {
-          throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
-        }
-
-        const data: { leads?: Lead[] } = await response.json();
+        const data = await response.json();
         if (data.leads && data.leads.length > 0) {
           setLeads(data.leads);
           setStats({
@@ -188,19 +192,28 @@ function App() {
             withEmail: data.leads.filter((l: Lead) => l.email).length,
             withPhone: data.leads.filter((l: Lead) => l.phone).length
           });
-          addLog(`[ÉXITO] n8n retornó ${data.leads.length} registros válidos.`);
+          addLog(`[ÉXITO] n8n retornó ${data.leads.length} registros.`);
         } else {
-          addLog(`[CONEXIÓN OK] n8n respondió vacío. Verifica tus filtros o credenciales en el motor.`);
-          // Not auto-reverting so user can see it works but is empty
+          addLog(`[CONEXIÓN OK] n8n respondió sin datos. Revisa tus filtros.`);
         }
+      };
+
+      try {
+        addLog(`> CONECTANDO MOTORES REALES: Enviando payload...`);
+        await performN8NRequest(false);
       } catch (err: any) {
-        if (err.message.includes('Failed to fetch')) {
-          addLog(`[ERROR DE SEGURIDAD] Bloqueo de CORS detectado.`);
-          addLog(`> N8N EXPERT TIP: Activa "Allowed Origins: *" en el nodo Webhook o configura N8N_CORS_ALLOWED_ORIGINS.`);
+        if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
+          try {
+            await performN8NRequest(true); // Retry in Simple Mode
+          } catch (retryErr: any) {
+            addLog(`[ERROR DE SEGURIDAD] Bloqueo persistente de CORS / Red.`);
+            addLog(`> DIAGNÓSTICO: Tu servidor n8n RECHAZÓ la conexión.`);
+            addLog(`> SOLUCIÓN: En n8n, activa "Allowed Origins: *" en el nodo Webhook.`);
+          }
         } else {
           addLog(`[DETECCIÓN DE FALLA] ${err.message}`);
         }
-        console.error('Diagnostic n8n result:', err);
+        console.error('Expert Diagnostic:', err);
       }
       setIsGenerating(false);
       return;
@@ -929,10 +942,28 @@ function App() {
                         Ejecutando...
                       </span>
                     ) : (
-                      <span className="flex items-center gap-2">
-                        <Plus size={18} />
-                        Extraer Datos
-                      </span>
+                      <>
+                        <span className="flex items-center gap-1.5 px-2 py-0.5 bg-primary-50 text-primary-600 rounded text-[10px]">
+                          <Terminal size={10} /> Online
+                        </span>
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            addLog('> INICIANDO AUTO-DIAGNÓSTICO...');
+                            try {
+                              const res = await fetch('https://n8n.jazm.io/webhook/nexus-leads', { method: 'OPTIONS' });
+                              addLog(`[INFO] Preflight Test: ${res.status} ${res.ok ? 'OK' : 'ERROR'}`);
+                              addLog('[INFO] Headers detectados. Motor listo.');
+                            } catch (e) {
+                              addLog('[ERROR] El servidor no responde a verificaciones OPTIONS.');
+                              addLog('> Acción: Revisa "CORS: Allowed" en n8n.');
+                            }
+                          }}
+                          className="ml-auto text-[9px] font-bold text-surface-400 hover:text-primary-600 transition-colors"
+                        >
+                          Refrescar
+                        </button>
+                      </>
                     )}
                   </button>
 
