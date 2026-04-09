@@ -179,7 +179,8 @@ function App() {
         } else if (mode === 'simple') {
           options.headers = { 'Content-Type': 'text/plain' };
         } else if (mode === 'proxy') {
-          url = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+          url = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+          options.headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
         }
 
         try {
@@ -192,20 +193,14 @@ function App() {
             addLog(`[DATA] Muestra: ${rawText.substring(0, 100).replace(/\n/g, '')}...`);
           }
 
-          if (!response.ok && mode !== 'proxy') {
+          if (!response.ok) {
             addLog(`[FALLA ${response.status}] El servidor rechazó el envío.`);
             throw new Error(`HTTP ${response.status}`);
           }
 
           let data;
           try {
-            const parsed = JSON.parse(rawText);
-            if (mode === 'proxy') {
-              if (!parsed.contents) throw new Error('Proxy sin respuesta');
-              data = typeof parsed.contents === 'string' ? JSON.parse(parsed.contents) : parsed.contents;
-            } else {
-              data = parsed;
-            }
+            data = JSON.parse(rawText);
           } catch (pErr) {
             addLog(`[ERROR FORMATO] La respuesta no es un JSON válido.`);
             throw pErr;
