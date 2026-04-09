@@ -157,9 +157,13 @@ function App() {
     if (isRealMode) {
       const payload = activeMode === 'domain'
         ? { domain: targetDomain }
-        : activeMode === 'asalariado'
-          ? { person: targetPersonName, cedula: targetPersonId }
-          : { query, province, layer: filters.sourceLayer, url: targetUrl };
+        : activeMode === 'direct'
+          ? { url: targetUrl }
+          : activeMode === 'asalariado'
+            ? { person: targetPersonName, cedula: targetPersonId }
+            : { query, province, layer: filters.sourceLayer, url: targetUrl };
+
+      addLog(`[DEBUG] Enviando parámetros: ${JSON.stringify(payload)}`);
 
       const performN8NRequest = async (mode: 'standard' | 'simple' | 'proxy') => {
         let url = 'https://n8n.jazm.io/webhook/nexus-leads';
@@ -180,40 +184,54 @@ function App() {
 
         try {
           const response = await fetch(url, options);
+          const rawText = await response.text();
+
+          // Debugging verbose
+          addLog(`[RAW] Recibidos ${rawText.length} bytes.`);
+          if (rawText.length > 0) {
+            addLog(`[DATA] Muestra: ${rawText.substring(0, 100).replace(/\n/g, '')}...`);
+          }
+
           if (!response.ok && mode !== 'proxy') {
-            addLog(`[HTTP ${response.status}] Server error.`);
+            addLog(`[FALLA ${response.status}] El servidor rechazó el envío.`);
             throw new Error(`HTTP ${response.status}`);
           }
 
           let data;
-          if (mode === 'proxy') {
-            const proxyResult = await response.json();
-            if (!proxyResult.contents) throw new Error('Proxy vacío');
-            try {
-              data = typeof proxyResult.contents === 'string' ? JSON.parse(proxyResult.contents) : proxyResult.contents;
-            } catch (pErr) {
-              addLog(`[PARSE ERROR] Proxy retornó datos no-JSON.`);
-              throw pErr;
+          try {
+            const parsed = JSON.parse(rawText);
+            if (mode === 'proxy') {
+              if (!parsed.contents) throw new Error('Proxy sin respuesta');
+              data = typeof parsed.contents === 'string' ? JSON.parse(parsed.contents) : parsed.contents;
+            } else {
+              data = parsed;
             }
-          } else {
-            data = await response.json();
+          } catch (pErr) {
+            addLog(`[ERROR FORMATO] La respuesta no es un JSON válido.`);
+            throw pErr;
           }
 
-          if (data && data.leads) {
-            setLeads(data.leads);
+          addLog(`[INFO] Analizando estructura de datos...`);
+
+          // Manejar respuesta de n8n que puede venir como array directo o objeto con .leads
+          const rawLeads = Array.isArray(data) ? data : (data.leads || data.results || data.data || []);
+
+          if (Array.isArray(rawLeads) && rawLeads.length > 0) {
+            setLeads(rawLeads);
             setStats({
-              total: data.leads.length,
-              withEmail: data.leads.filter((l: Lead) => l.email).length,
-              withPhone: data.leads.filter((l: Lead) => l.phone).length
+              total: rawLeads.length,
+              withEmail: rawLeads.filter((l: Lead) => l.email).length,
+              withPhone: rawLeads.filter((l: Lead) => l.phone).length
             });
-            addLog(`[ÉXITO] ${data.leads.length} leads extraídos.`);
-            return true; // Success!
+            addLog(`[EXITO] Se cargaron ${rawLeads.length} registros del rastro.`);
+            return true;
           } else {
-            addLog(`[AVISO] Respuesta exitosa pero sin formato de leads.`);
+            addLog(`[AVISO] Respuesta legible pero 0 leads encontrados.`);
+            if (data) addLog(`> Campos detectados: ${Object.keys(data).join(', ')}`);
             return false;
           }
-        } catch (fetchErr) {
-          addLog(`[FALLO] ${mode.toUpperCase()} bloqueado.`);
+        } catch (fetchErr: any) {
+          addLog(`[BLOQUEO] Falló vía ${mode}: ${fetchErr.message}`);
           throw fetchErr;
         }
       };
