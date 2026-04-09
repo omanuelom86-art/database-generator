@@ -144,22 +144,15 @@ function App() {
   };
 
   const handleGenerate = async () => {
-    if (searchInterval.current) clearInterval(searchInterval.current);
+    if (!query && activeMode === 'search') return;
     setIsGenerating(true);
-    setTrackingLogs([]);
+    addLog('--- NUEVA ACTIVACIÓN DE MOTOR ---');
 
     if (activeMode === 'asalariado') {
       addLog(`[SYSTEM] Iniciando verificación de identidad: Consultando registros TSE...`);
     } else {
       addLog(`[SYSTEM] Iniciando rastreo omnicanal en ${province}...`);
     }
-
-    // Task Checklist:
-    // - [x] Connect Frontend to n8n Webhook
-    // - [x] Fix n8n Connection Robustness (CORS/Timeout)
-    // - [x] Implement "Diagnostic Connection Test" tool
-    // - [x] Implement "Simple Request" fallback (bypass preflight)
-    // - [x] Add n8n instance health check
 
     if (isRealMode) {
       const payload = activeMode === 'domain'
@@ -170,63 +163,86 @@ function App() {
 
       const performN8NRequest = async (mode: 'standard' | 'simple' | 'proxy') => {
         let url = 'https://n8n.jazm.io/webhook/nexus-leads';
-        let options: RequestInit = {
+        const options: RequestInit = {
           method: 'POST',
           body: JSON.stringify(payload)
         };
 
+        addLog(`> Intentando vía: ${mode.toUpperCase()}...`);
+
         if (mode === 'standard') {
-          addLog(`[STANDARD] Intentando conexión segura (JSON)...`);
           options.headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
         } else if (mode === 'simple') {
-          addLog(`[SIMPLE] Bypass de Preflight (CORS Skip)...`);
           options.headers = { 'Content-Type': 'text/plain' };
         } else if (mode === 'proxy') {
-          addLog(`[PROXY] Usando Túnel de Emergencia (AllOrigins)...`);
           url = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
         }
 
-        const response = await fetch(url, options);
-        if (!response.ok && mode !== 'proxy') throw new Error(`HTTP ${response.status}`);
+        try {
+          const response = await fetch(url, options);
+          if (!response.ok && mode !== 'proxy') {
+            addLog(`[HTTP ${response.status}] Server error.`);
+            throw new Error(`HTTP ${response.status}`);
+          }
 
-        let data;
-        if (mode === 'proxy') {
-          const proxyResult = await response.json();
-          // AllOrigins returns the stringified content in .contents
-          data = typeof proxyResult.contents === 'string' ? JSON.parse(proxyResult.contents) : proxyResult.contents;
-        } else {
-          data = await response.json();
-        }
+          let data;
+          if (mode === 'proxy') {
+            const proxyResult = await response.json();
+            if (!proxyResult.contents) throw new Error('Proxy vacío');
+            try {
+              data = typeof proxyResult.contents === 'string' ? JSON.parse(proxyResult.contents) : proxyResult.contents;
+            } catch (pErr) {
+              addLog(`[PARSE ERROR] Proxy retornó datos no-JSON.`);
+              throw pErr;
+            }
+          } else {
+            data = await response.json();
+          }
 
-        if (data && data.leads) {
-          setLeads(data.leads);
-          setStats({
-            total: data.leads.length,
-            withEmail: data.leads.filter((l: Lead) => l.email).length,
-            withPhone: data.leads.filter((l: Lead) => l.phone).length
-          });
-          addLog(`[ÉXITO] registros recibidos vía ${mode.toUpperCase()}.`);
-        } else {
-          addLog(`[INFO] Conectado vía ${mode}, pero el formato de datos es diferente.`);
+          if (data && data.leads) {
+            setLeads(data.leads);
+            setStats({
+              total: data.leads.length,
+              withEmail: data.leads.filter((l: Lead) => l.email).length,
+              withPhone: data.leads.filter((l: Lead) => l.phone).length
+            });
+            addLog(`[ÉXITO] ${data.leads.length} leads extraídos.`);
+            return true; // Success!
+          } else {
+            addLog(`[AVISO] Respuesta exitosa pero sin formato de leads.`);
+            return false;
+          }
+        } catch (fetchErr) {
+          addLog(`[FALLO] ${mode.toUpperCase()} bloqueado.`);
+          throw fetchErr;
         }
       };
 
       try {
-        await performN8NRequest('standard');
-      } catch (e1) {
-        try {
-          await new Promise(r => setTimeout(r, 500));
-          await performN8NRequest('simple');
-        } catch (e2) {
-          try {
-            await new Promise(r => setTimeout(r, 1000));
+        const ok = await performN8NRequest('standard');
+        if (!ok) {
+          addLog(`> Probando modo alternativo...`);
+          const ok2 = await performN8NRequest('simple');
+          if (!ok2) {
+            addLog(`> Probando túnel de emergencia...`);
             await performN8NRequest('proxy');
-          } catch (e3) {
-            addLog(`[FALLO TOTAL] n8n sigue inaccesible.`);
-            addLog(`> SOLUCIÓN FINAL: Revisa que tu servidor n8n sea ACCESIBLE.`);
+          }
+        }
+      } catch (_e1) {
+        try {
+          await new Promise(r => setTimeout(r, 600));
+          await performN8NRequest('simple');
+        } catch (_e2) {
+          try {
+            await new Promise(r => setTimeout(r, 800));
+            await performN8NRequest('proxy');
+          } catch (_e3) {
+            addLog(`[CRÍTICO] Todos los intentos fallaron.`);
+            addLog(`> REVISA: Conectividad n8n y formato de respuesta.`);
           }
         }
       }
+      addLog('--- RASTREO FINALIZADO ---');
       setIsGenerating(false);
       return;
     }
