@@ -7,4 +7,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
     console.warn('Faltan credenciales de Supabase. El sistema funcionará en modo simulación.');
 }
 
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
+export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
+    db: {
+        schema: 'leads_engine'
+    }
+});

@@ -141,7 +141,7 @@ function App() {
       const channel = supabase
         .channel('companies_results')
         .on('postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'companies_output' },
+          { event: 'INSERT', schema: 'leads_engine', table: 'companies_output' },
           (payload) => {
             const row = payload.new;
             const newLead: Lead = {
