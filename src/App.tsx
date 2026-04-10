@@ -200,8 +200,9 @@ function App() {
     if (isRealMode) {
       addLog(`[AGENTE] Enviando objetivo "${query || targetUrl}" al motor profesional...`);
 
-      // Professional Agentic Flow: Insert into input table
+      // Professional Agentic Flow: Insert into input table with explicit schema
       const { error: insertErr } = await supabase
+        .schema('leads_engine')
         .from('companies_input')
         .insert([{
           name: query || province,
