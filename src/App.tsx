@@ -948,28 +948,9 @@ function App() {
                         Ejecutando...
                       </span>
                     ) : (
-                      <>
-                        <span className="flex items-center gap-1.5 px-2 py-0.5 bg-primary-50 text-primary-600 rounded text-[10px]">
-                          <Terminal size={10} /> Online
-                        </span>
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            addLog('> INICIANDO AUTO-DIAGNÓSTICO...');
-                            try {
-                              const res = await fetch('https://n8n.jazm.io/webhook/nexus-leads', { method: 'OPTIONS' });
-                              addLog(`[INFO] Preflight Test: ${res.status} ${res.ok ? 'OK' : 'ERROR'}`);
-                              addLog('[INFO] Headers detectados. Motor listo.');
-                            } catch (e) {
-                              addLog('[ERROR] El servidor no responde a verificaciones OPTIONS.');
-                              addLog('> Acción: Revisa "CORS: Allowed" en n8n.');
-                            }
-                          }}
-                          className="ml-auto text-[9px] font-bold text-surface-400 hover:text-primary-600 transition-colors"
-                        >
-                          Refrescar
-                        </button>
-                      </>
+                      <span className="flex items-center gap-1.5 px-2 py-0.5 bg-primary-50 text-primary-600 rounded text-[10px]">
+                        <Terminal size={10} /> Online
+                      </span>
                     )}
                   </button>
 
